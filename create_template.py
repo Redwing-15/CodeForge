@@ -13,15 +13,15 @@ def get_file_path(filename: str, language:str, ) -> str:
     """
     return path.abspath(path.join(".", "templates", language, filename) + '.txt')
 
-def create_template(language:str, filename: str, desc: str, show: bool = True) -> None:
+def create_template(filename: str, language:str, desc: str, show: bool = True) -> None:
     """
     Creates a blank template for a given language with a custom name and description.
     
     Will provide an output message when successful. Can be disabled by setting \'show\' to false.
 
     Args:
-        language (str): The language that the template is for.
         filename (str): The name of the template
+        language (str): The language that the template is for.
         desc (str, optional): The description of the template.
         show (bool, optional): Will show an output message when successful. Default is True
     """
