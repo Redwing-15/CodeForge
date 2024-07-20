@@ -40,10 +40,14 @@ def create_project(project_name:str, language: str, template: str, disable_nulla
         extension = "cs"
         remove(path.join(project_path, f"Program.cs"))
     else:
-        print(f"Error: Unsupported language {operating_system}")
+        print(f"Error: Unsupported language {language}")
     
     with open(path.join(project_path, f"{project_name}.{extension}"), "w+") as file:
         file.writelines(template_lines)
+
+    if language == "python":
+        with open(path.join(project_path, ".gitignore"), 'w+') as file:
+            file.write("# Ignore __pycache__\n__pycache__/")
 
     if disable_nullable:
         with open(path.join(project_path, f"{project_name}.csproj"), 'r') as file:
