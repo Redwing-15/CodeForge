@@ -149,7 +149,7 @@ def handle_args() -> None:
 
     create_project(project_name, language, template, args.disable_nullable, args.repository, args.open)
 
-#!!Update with open vscode
+
 def ask_inputs() -> None:
     """
     Asks user for argument inputs, then runs create_project()
@@ -183,7 +183,10 @@ def ask_inputs() -> None:
     if input("Do you want to initialize a git repository for the project?\n(N) Y/N: ") == "y":
         create_repo = True
 
-    create_project(project_name, language, template, disable_nullable, create_repo)
+    open_project = False
+    if input("Do you want to open the project in VS Code?\n(N) Y/N: ") == "y":
+        open_project = True
+    create_project(project_name, language, template, disable_nullable, create_repo, open_project)
 
 
 def get_templates(language: str, show: bool = False) -> dict:
