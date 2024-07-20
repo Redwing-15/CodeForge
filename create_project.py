@@ -45,10 +45,6 @@ def create_project(project_name:str, language: str, template: str, disable_nulla
     with open(path.join(project_path, f"{project_name}.{extension}"), "w+") as file:
         file.writelines(template_lines)
 
-    if language == "python":
-        with open(path.join(project_path, ".gitignore"), 'w+') as file:
-            file.write("# Ignore __pycache__\n__pycache__/")
-
     if disable_nullable:
         with open(path.join(project_path, f"{project_name}.csproj"), 'r') as file:
             content = file.read()
@@ -66,6 +62,10 @@ def create_project(project_name:str, language: str, template: str, disable_nulla
             print(f"Error: Unsupported operating system {operating_system}")
 
         os_system(f"cd {project_path} {next_command} git init")
+
+        if language == "python":
+            with open(path.join(project_path, ".gitignore"), 'w+') as file:
+                file.write("# Ignore __pycache__\n__pycache__/")
     
     if open_project:
         os_system(f"code \"{path.abspath(project_path)}\"")
