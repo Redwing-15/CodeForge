@@ -134,7 +134,6 @@ def handle_args() -> None:
         print(f"for a list of templates, use \'codeforge.py --templates {language}\'")
         return
     elif args.template:
-        print("Template:", args.template)
         template = args.template.lower()
         templates = get_templates(language)
         if not template in templates:

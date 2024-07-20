@@ -36,12 +36,16 @@ def create_project(project_name:str, language: str, template: str, disable_nulla
 
     if language == "python":
         extension = "py"
+        shebang = "/usr/bin/env python3"
     elif language == "c#": 
         extension = "cs"
+        shebang = False
         remove(path.join(project_path, f"Program.cs"))
     else:
         print(f"Error: Unsupported language {language}")
     
+    if shebang:
+        template_lines.insert(0, f"#!{shebang}\n")
     with open(path.join(project_path, f"{project_name}.{extension}"), "w+") as file:
         file.writelines(template_lines)
 
