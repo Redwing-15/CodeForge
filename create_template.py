@@ -24,7 +24,8 @@ def create_template(filename: str, language:str, desc: str, show: bool = True) -
         desc (str, optional): The description of the template.
         show (bool, optional): Will show an output message when successful. Default is True
     """
-    file_path = get_file_path(language, filename)
+    file_path = get_file_path(filename, language)
+    print(file_path)
     with open(file_path, "w") as template:
         template.write(f"# Description:\n# {desc}\n")
 

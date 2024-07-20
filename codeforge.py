@@ -105,16 +105,16 @@ def handle_args() -> None:
         return
 
     if args.command == "template":
-        filename = args.name.lower()
-        if path.exists(path.abspath(path.join(".", "templates", language, filename))):
-            print(f"codeforge.py: error: template '{filename}' already exists.")
-            print("for a list of templates, use 'codeforge.py --templates'")
-            return
-        
         language = args.language.lower()
         if language not in LANGUAGES:
             print(f"codeforge.py: error: language '{language}' not supported.")
             print("for a list of supported languages, use 'codeforge.py --languages'")
+            return
+        
+        filename = args.name.lower()
+        if path.exists(path.abspath(path.join(".", "templates", language, filename))):
+            print(f"codeforge.py: error: template '{filename}' already exists.")
+            print("for a list of templates, use 'codeforge.py --templates'")
             return
         
         create_template(args.name, language, args.description)
