@@ -60,7 +60,7 @@ def handle_args() -> None:
     """
     Handles provided arguments, then runs create_project
     """
-    parser = argparse.ArgumentParser(description="CodeForge CLI", add_help=False)
+    parser = argparse.ArgumentParser(add_help=False)
 
     # Define optional flags
     parser.add_argument("-h", "--help", action="store_true", help="Shows this help message and exit")
