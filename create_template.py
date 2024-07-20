@@ -24,9 +24,12 @@ def create_template(filename: str, language:str, desc: str, show: bool = True) -
         desc (str, optional): The description of the template.
         show (bool, optional): Will show an output message when successful. Default is True
     """
+    if not path.exists(path.join("templates", language)):
+        create_defaults(language, False)
+
     file_path = get_file_path(filename, language)
     print(file_path)
-    with open(file_path, "w") as template:
+    with open(file_path, "w+") as template:
         template.write(f"# Description:\n# {desc}\n")
 
     if show: print(f"Successfully created '{filename}' at '{file_path}'")
