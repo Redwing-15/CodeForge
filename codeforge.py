@@ -1,4 +1,4 @@
-#!/usr/bin/env/ python3
+#!/usr/bin/env python3
 
 # Note:
 # Currently developing in linux, and thus do not have access to dotnet.
@@ -40,6 +40,7 @@ commands:
             -t, --template <name>       Use a custom template. Default is 'blank'
             -n, --disable_nullable      If using C#, disable nullable error checking
             -r, --repository            Initializes a git repository in the project folder
+            -o, --open:                 Opens the project folder via VS Code
 
     template        Creates a template
         usage: codeforge.py template <name> <language> [description]
@@ -81,6 +82,7 @@ def handle_args() -> None:
     create_parser.add_argument("-n", "--disable_nullable", action='store_true', help="If using C#, disable nullable error checking")
     create_parser.add_argument("-t", "--template", type=str, default="blank", help="Use a custom template. Default is 'blank'")
     create_parser.add_argument("-r", "--repository", action='store_true', help="Initializes a git repository of in the project folder")
+    create_parser.add_argument("-o", "--open", action='store_true', help="Opens the project folder via VS Code")
     # Might possibly add ability to add a custom name for the repository
     
     # Define template subcommand
@@ -131,7 +133,7 @@ def handle_args() -> None:
         print(f"codeforge.py: error: language \'{language}\' not supported.")
         print("for a list of supported languages, use \'codeforge.py --languages\'")
         return
-    
+
     if args.template is None:
         print(f"codeforge.py create: error: the following arguments are required: template")
         print(f"for a list of templates, use \'codeforge.py --templates {language}\'")
@@ -150,9 +152,9 @@ def handle_args() -> None:
             print("codeforge.py: error: language chosen is not C#, and thus does not support disabling of nullable error checking!")
             return
 
-    create_project(project_name, language, template, args.disable_nullable, args.repository)
+    create_project(project_name, language, template, args.disable_nullable, args.repository, args.open)
 
-
+#!!Update with open vscode
 def ask_inputs() -> None:
     """
     Asks user for argument inputs, then runs create_project()
@@ -208,15 +210,15 @@ def get_templates(language: str, show: bool = False) -> dict:
     if not path.exists(templates_folder):
         mkdir(templates_folder)
     
-    path_to_folder = path.abspath(path.join(".", "templates", language))
-    if not path.exists(path_to_folder):
-        mkdir(path_to_folder)
+    folder_path = path.abspath(path.join(".", "templates", language))
+    if not path.exists(folder_path):
+        mkdir(folder_path)
         create_defaults(language, False)
 
     if show: print(f"{language} templates:")
     templates = {}
-    for template in glob(path.join(path_to_folder, "*.txt")):
-        filename = template[len(path_to_folder)+1:-4].lower()
+    for template in glob(path.join(folder_path, "*.txt")):
+        filename = template[len(folder_path)+1:-4].lower()
         templates[filename] = template
         if show:
             with open(template, 'r') as file:

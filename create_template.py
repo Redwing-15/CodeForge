@@ -1,7 +1,5 @@
-#!/usr/bin/env/ python3
-
 from os import path
-from subprocess import run
+
 
 def get_file_path(filename: str, language:str, ) -> str:
     """
@@ -12,6 +10,7 @@ def get_file_path(filename: str, language:str, ) -> str:
         language (str): The language of the file
     """
     return path.abspath(path.join(".", "templates", language, filename) + '.txt')
+
 
 def create_template(filename: str, language:str, desc: str, show: bool = True) -> None:
     """
@@ -33,6 +32,7 @@ def create_template(filename: str, language:str, desc: str, show: bool = True) -
     if show: print(f"Successfully created \'{filename}\' at \'{file_path}\'")
 
     return
+
 
 def create_defaults(language:str, show: bool = True) -> None:
     """
@@ -82,3 +82,5 @@ if __name__ == \'__main__\':
                 template.write(f"# Description:\n# A blank file\n")
                 template.close()
             if show: print(f"Successfully created \'blank\' at \'{file_path}\'")
+    
+    return
