@@ -56,15 +56,21 @@ def create_project(project_name:str, language: str, template: str, disable_nulla
         with open(path.join(project_path, f"{project_name}.csproj"), 'w') as file:
             content = file.write(content)
 
+    print(f"Successfully created project")
+
+    operating_system = platform_system()
+    # Provide execute permissions for the file if on linux
+    if operating_system == "Linux":
+        if language != "c#": # C# uses 'dotnet new' which already provides permissions
+            os_system(f"chmod +x {path.join(project_path, f"{project_name}.{extension}")}")
+    
     if create_repo: 
-        operating_system = platform_system()
         if operating_system == "Windows":
             next_command = "&&"
         elif operating_system == "Linux":
             next_command = ";"
         else:
             print(f"Error: Unsupported operating system {operating_system}")
-
         os_system(f"cd {project_path} {next_command} git init")
 
         if language == "python":
@@ -74,5 +80,4 @@ def create_project(project_name:str, language: str, template: str, disable_nulla
     if open_project:
         os_system(f"code \"{path.abspath(project_path)}\"")
     
-    print(f"Successfully created project")
     return
