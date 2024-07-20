@@ -1,4 +1,4 @@
-from os import path, system as os_system, makedirs
+from os import path, system as os_system, makedirs, remove
 from platform import system as platform_system
 from shutil import rmtree
 
@@ -23,18 +23,34 @@ def create_project(project_name:str, language: str, template: str, disable_nulla
             print("Exiting program")
             return
         rmtree(project_path)
+
     makedirs(project_path)
+    if language == "c#":
+        os_system(f"dotnet new console -n {project_name} -o {project_path}")
 
     template_path = f"{path.join("templates", language, template)}.txt"
     with open(template_path, "r") as file:
         template_lines = file.readlines()
-        file.close()
     # Remove first two lines as they are just the template description
     template_lines = template_lines[2:len(template_lines)]
 
-    with open(path.join(project_path, f"{project_name}.py"), "w+") as file:
+    if language == "python":
+        extension = "py"
+    elif language == "c#": 
+        extension = "cs"
+        remove(path.join(project_path, f"Program.cs"))
+    else:
+        print(f"Error: Unsupported language {operating_system}")
+    
+    with open(path.join(project_path, f"{project_name}.{extension}"), "w+") as file:
         file.writelines(template_lines)
-        file.close()
+
+    if disable_nullable:
+        with open(path.join(project_path, f"{project_name}.csproj"), 'r') as file:
+            content = file.read()
+        content = content.replace("<Nullable>enable</Nullable>", "<Nullable>disable</Nullable>")
+        with open(path.join(project_path, f"{project_name}.csproj"), 'w') as file:
+            content = file.write(content)
 
     if create_repo: 
         operating_system = platform_system()

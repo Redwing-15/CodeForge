@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 
-# Note:
-# Currently developing in linux, and thus do not have access to dotnet.
-# This means that C# support will come later when it is easier to implement
-# due to dotnet having built-in commands for creating projects and using templates.
-
 from sys import argv
-from os import path, mkdir
+from os import path, makedirs
 from glob import glob
 import argparse
 
@@ -14,7 +9,7 @@ from create_project import create_project
 from create_template import create_template, create_defaults
 
 
-LANGUAGES = ["python"]
+LANGUAGES = ["python", "c#"]
 
 
 def show_help():
@@ -37,7 +32,7 @@ commands:
     create          Creates a project
         usage: codeforge.py create <name> <language> [options]
         optional arguments:
-            -t, --template <name>       Use a custom template. Default is 'blank'
+            -t, --template <name>       Use a custom template. Default is 'hello world'
             -n, --disable_nullable      If using C#, disable nullable error checking
             -r, --repository            Initializes a git repository in the project folder
             -o, --open:                 Opens the project folder via VS Code
@@ -79,8 +74,8 @@ def handle_args() -> None:
     create_parser = subparsers.add_parser("create", help="Creates a project")
     create_parser.add_argument("name", type=str, help="The name of the project")
     create_parser.add_argument("language", type=str, help="The programming language for the project")
+    create_parser.add_argument("-t", "--template", type=str, default="hello world", help="Use a custom template. Default is 'blank'")
     create_parser.add_argument("-n", "--disable_nullable", action='store_true', help="If using C#, disable nullable error checking")
-    create_parser.add_argument("-t", "--template", type=str, default="blank", help="Use a custom template. Default is 'blank'")
     create_parser.add_argument("-r", "--repository", action='store_true', help="Initializes a git repository of in the project folder")
     create_parser.add_argument("-o", "--open", action='store_true', help="Opens the project folder via VS Code")
     # Might possibly add ability to add a custom name for the repository
@@ -206,13 +201,9 @@ def get_templates(language: str, show: bool = False) -> dict:
         print("for a list of supported languages, use \'codeforge.py -languages\'")
         return
     
-    templates_folder = path.abspath(path.join(".", "templates"))
-    if not path.exists(templates_folder):
-        mkdir(templates_folder)
-    
     folder_path = path.abspath(path.join(".", "templates", language))
     if not path.exists(folder_path):
-        mkdir(folder_path)
+        makedirs(folder_path)
         create_defaults(language, False)
 
     if show: print(f"{language} templates:")
