@@ -16,8 +16,7 @@ def show_help():
     """
     Displays the help message
     """
-    print(
-        """usage: codeforge.py [options] <project_name> <language> [args]
+    print("""usage: codeforge.py [options] <project_name> <language> [args]
 
 options:
     -h, --help      Shows this help message and exit
@@ -33,7 +32,8 @@ commands:
         usage: codeforge.py create <name> <language> [options]
         optional arguments:
             -t, --template <name>       Use a custom template. Default is 'hello world'
-            -n, --disable_nullable      If using C#, disable nullable error checking
+            -p, --disable-project       Disables the creation of a csproj and instead makes a .csx
+            -n, --disable-nullable      If using C#, disable nullable error checking
             -r, --repository            Initializes a git repository in the project folder
             -o, --open:                 Opens the project folder via VS Code
 
@@ -43,8 +43,7 @@ commands:
 examples: 
     codeforge.py create "my project" c# -n -t "my template"
     codeforge.py template "my template" python "A custom description"
-"""""
-    )
+""")
 
 
 def show_languages():
@@ -75,16 +74,18 @@ def handle_args() -> None:
     create_parser.add_argument("name", type=str, help="The name of the project")
     create_parser.add_argument("language", type=str, help="The programming language for the project")
     create_parser.add_argument("-t", "--template", type=str, default="hello world", help="Use a custom template. Default is 'blank'")
-    create_parser.add_argument("-n", "--disable_nullable", action='store_true', help="If using C#, disable nullable error checking")
-    create_parser.add_argument("-r", "--repository", action='store_true', help="Initializes a git repository of in the project folder")
-    create_parser.add_argument("-o", "--open", action='store_true', help="Opens the project folder via VS Code")
+    create_parser.add_argument("-p", "--disable-project", action='store_true', help="Disables the creation of a csproj and instead makes a .csx")
+    create_parser.add_argument("-n", "--disable_nullable", action="store_true", help="If using C#, disable nullable error checking")
+    create_parser.add_argument("-r", "--repository", action="store_true", help="Initializes a git repository of in the project folder")
+    create_parser.add_argument("-o", "--open", action="store_true", help="Opens the project folder via VS Code")
     # Might possibly add ability to add a custom name for the repository
-    
+
     # Define template subcommand
     template_parser = subparsers.add_parser("template", help="Creates a template")
     template_parser.add_argument("name", type=str, help="The name of the template")
     template_parser.add_argument("language", type=str, help="The programming language for the template")
-    template_parser.add_argument("description", type=str, nargs='?', default="A custom template", help="A description for the template. Default is 'A custom template'")
+    template_parser.add_argument("description", type=str, nargs="?", default="A custom template",
+                                 help="A description for the template. Default is 'A custom template'")
 
     args = parser.parse_args()
 
@@ -95,11 +96,11 @@ def handle_args() -> None:
     if args.help:
         show_help()
         return
-    
+
     if args.templates:
         get_templates(args.templates, True)
         return
-    
+
     if args.generate_defaults:
         create_defaults(args.generate_defaults.lower())
         return
@@ -110,43 +111,52 @@ def handle_args() -> None:
             print(f"codeforge.py: error: language '{language}' not supported.")
             print("for a list of supported languages, use 'codeforge.py --languages'")
             return
-        
+
         filename = args.name.lower()
         if path.exists(path.abspath(path.join(".", "templates", language, filename))):
             print(f"codeforge.py: error: template '{filename}' already exists.")
             print("for a list of templates, use 'codeforge.py --templates'")
             return
-        
+
         create_template(args.name, language, args.description)
         return
-    
+
     # Else, handle create function
     project_name = args.name.lower()
     language = args.language.lower()
 
     if not language in LANGUAGES:
-        print(f"codeforge.py: error: language \'{language}\' not supported.")
-        print("for a list of supported languages, use \'codeforge.py --languages\'")
+        print(f"codeforge.py: error: language '{language}' not supported.")
+        print("for a list of supported languages, use 'codeforge.py --languages'")
         return
-
+    
     if args.template is None:
         print(f"codeforge.py create: error: the following arguments are required: template")
-        print(f"for a list of templates, use \'codeforge.py --templates {language}\'")
+        print(f"for a list of templates, use 'codeforge.py --templates {language}'")
         return
+    
+    if args.disable_project:
+        if language != "c#":
+            print("codeforge.py: error: language chosen is not C#, and thus does not need a project toggle")
+            return
+    
     elif args.template:
         template = args.template.lower()
         templates = get_templates(language)
         if not template in templates:
-            print(f"codeforge.py: error: template \'{template}\' not found for {language}.")
-            print(f"for a list of templates, use \'codeforge.py --templates {language}\'")
-            return
-        
-    if args.disable_nullable:
-        if language != "c#":
-            print("codeforge.py: error: language chosen is not C#, and thus does not support disabling of nullable error checking!")
+            print(f"codeforge.py: error: template '{template}' not found for {language}.")
+            print(f"for a list of templates, use 'codeforge.py --templates {language}'")
             return
 
-    create_project(project_name, language, template, args.disable_nullable, args.repository, args.open)
+    if args.disable_nullable:
+        if language != "c#":
+            print("codeforge.py: error: language chosen is not C#, and thus does not support disabling of nullable error checking")
+            return
+        elif args.disable_project:
+            print("codeforge.py: error: cannot disable nullable error checking for csx file")
+            return
+
+    create_project(project_name, language, args.template.lower(), args.disable_project, args.disable_nullable, args.repository, args.open)
 
 
 def ask_inputs() -> None:
@@ -158,34 +168,41 @@ def ask_inputs() -> None:
     show_languages()
     language = input("\nWhat language will the project use?\nLanguage: ").lower()
     if language not in LANGUAGES:
-        print(f"Error: language \'{language}\' is not supported.")
+        print(f"Error: language '{language}' is not supported.")
         input("Press enter to exit!")
         return
-    
+
+    disable_project = True
+    if not language == "c#":
+        disable_project = False
+    elif (input("\nDo you want to disable the creation of a csproject and instead create a .csx?\n(Y) Y/N: ").lower() == "y"):
+        disable_project = False
+
     disable_nullable = True
-    if not language == 'c#':
+    if not language == "c#":
         disable_nullable = False
-    elif input("\nDo you want to disable nullable error checking?\n(Y) Y/N: ").lower() == "y":
+    elif (input("\nDo you want to disable nullable error checking?\n(Y) Y/N: ").lower() == "y"):
         disable_nullable = False
-    
+
     print("")
     templates = get_templates(language, True)
-    template = input("Do you want to use a template? Leave blank to use default (\'blank\')\nTemplate: ").lower()
-    
-    if template == '': template = "blank"
+    template = input("Do you want to use a template? Leave blank to use default ('blank')\nTemplate: ").lower()
+
+    if template == "":
+        template = "blank"
     if template not in templates:
-        print(f"Error: template \'{template}\' not found.")
+        print(f"Error: template '{template}' not found.")
         input("Press enter to exit!")
         return
-    
+
     create_repo = False
-    if input("Do you want to initialize a git repository for the project?\n(N) Y/N: ") == "y":
+    if (input("Do you want to initialize a git repository for the project?\n(N) Y/N: ") == "y"):
         create_repo = True
 
     open_project = False
     if input("Do you want to open the project in VS Code?\n(N) Y/N: ") == "y":
         open_project = True
-    create_project(project_name, language, template, disable_nullable, create_repo, open_project)
+    create_project(project_name, language, template, disable_project, disable_nullable, create_repo, open_project)
 
 
 def get_templates(language: str, show: bool = False) -> dict:
@@ -199,22 +216,23 @@ def get_templates(language: str, show: bool = False) -> dict:
         show (bool, optional): Will output all found templates. Default is False
     """
     if not language in LANGUAGES:
-        print(f"codeforge.py: error: language \'{language}\' not supported.")
-        print("for a list of supported languages, use \'codeforge.py -languages\'")
+        print(f"codeforge.py: error: language '{language}' not supported.")
+        print("for a list of supported languages, use 'codeforge.py -languages'")
         return
-    
+
     folder_path = path.abspath(path.join(".", "templates", language))
     if not path.exists(folder_path):
         makedirs(folder_path)
         create_defaults(language, False)
 
-    if show: print(f"{language} templates:")
+    if show:
+        print(f"{language} templates:")
     templates = {}
     for template in glob(path.join(folder_path, "*.txt")):
-        filename = template[len(folder_path)+1:-4].lower()
+        filename = template[len(folder_path) + 1 : -4].lower()
         templates[filename] = template
         if show:
-            with open(template, 'r') as file:
+            with open(template, "r") as file:
                 desc = file.readlines()[1][2:]
                 file.close()
             print(f"{filename}:    {desc}")

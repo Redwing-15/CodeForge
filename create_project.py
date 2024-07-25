@@ -3,7 +3,13 @@ from platform import system as platform_system
 from shutil import rmtree
 
 
-def create_project(project_name:str, language: str, template: str, disable_nullable: bool, create_repo: bool, open_project: bool) -> None:
+def create_project(project_name:str,
+                   language: str,
+                   template: str,
+                   disable_project:bool,
+                   disable_nullable: bool,
+                   create_repo: bool,
+                   open_project: bool) -> None:
     """
     Creates a project folder for a specified langauge with optional flags
 
@@ -13,6 +19,7 @@ def create_project(project_name:str, language: str, template: str, disable_nulla
         project_name (str): The name of the project
         language (str): The language that the project will use
         template (str): The template to use for the project
+        disable_project (bool): If using C#, disables the creation of a csproj and instead makes a csx
         disable_nullable (bool): If using C#, disables nullable error checking when true
         create_repo (bool): Will initialize a git repository
         open_project (bool): Will open the project in VS Code if True
@@ -26,7 +33,13 @@ def create_project(project_name:str, language: str, template: str, disable_nulla
 
     makedirs(project_path)
     if language == "c#":
-        os_system(f"dotnet new console -n {project_name} -o {project_path}")
+        if disable_project:
+            extension = "csx"
+            shebang = "/usr/bin/env/ dotnet-script"
+        else:
+            print("Dotnet new console")
+            os_system(f"dotnet new console -n {project_name} -o {project_path}")
+            
 
     template_path = f"{path.join("templates", language, template)}.txt"
     with open(template_path, "r") as file:
@@ -37,7 +50,7 @@ def create_project(project_name:str, language: str, template: str, disable_nulla
     if language == "python":
         extension = "py"
         shebang = "/usr/bin/env python3"
-    elif language == "c#": 
+    elif language == "c#" and disable_project == False: 
         extension = "cs"
         shebang = False
         remove(path.join(project_path, f"Program.cs"))
