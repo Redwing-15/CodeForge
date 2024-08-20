@@ -35,7 +35,8 @@ commands:
             -p, --project               If using C#, creates a .csproj instead of a .csx
             -n, --nullable              If using C#, enables nullable error checking
             -r, --repository            Initializes a git repository in the project folder
-            -o, --open:                 Opens the project folder via VS Code
+            -c, --code:                 Opens the project folder via VS Code once created
+            -o, --output:               Specifies the output path for the project
 
     template        Creates a template
         usage: codeforge.py template <name> <language> [description]
@@ -77,7 +78,8 @@ def handle_args() -> None:
     create_parser.add_argument("-p", "--project", action='store_true', help="If using C#, creates a .csproj instead of a .csx")
     create_parser.add_argument("-n", "--nullable", action="store_true", help="If using C#, enables nullable error checking")
     create_parser.add_argument("-r", "--repository", action="store_true", help="Initializes a git repository of in the project folder")
-    create_parser.add_argument("-o", "--open", action="store_true", help="Opens the project folder via VS Code")
+    create_parser.add_argument("-c", "--code", action="store_true", help="Opens the project folder via VS Code once created")
+    create_parser.add_argument("-o", "--output", type=str, default = None, help="Specifies the output path for the project")
     # Might possibly add ability to add a custom name for the repository
 
     # Define template subcommand
@@ -154,7 +156,11 @@ def handle_args() -> None:
             print("codeforge.py: error: cannot enable nullable error checking for csx file")
             return
 
-    create_project(project_name, language, args.template.lower(), args.project, args.nullable, args.repository, args.open)
+    if args.output:
+        if not path.exists(args.output):
+            print(f"codeforge.py: error: cannot find path '{args.output}'")
+            return
+    create_project(project_name, language, args.template.lower(), args.project, args.nullable, args.repository, args.code, args.output)
 
 
 def ask_inputs() -> None:
@@ -205,7 +211,7 @@ def ask_inputs() -> None:
 
 def get_templates(language: str, show: bool = False) -> dict:
     """
-    Returns a dictionary of all found template names for a given language .
+    Returns a dictionary of all found template names for a given language in the form {name: path}.
 
     Can optionally output all found templates if \'show\' is True.
 

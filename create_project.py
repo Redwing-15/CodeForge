@@ -9,10 +9,11 @@ LANGUAGES = ["python", "c#"]
 def create_project(project_name:str,
                    language: str,
                    template: str,
-                   project:bool,
+                   project: bool,
                    nullable: bool,
                    create_repo: bool,
-                   open_project: bool) -> None:
+                   open_project: bool,
+                   output: str) -> None:
     """
     Creates a project folder for a specified langauge with optional flags
 
@@ -25,9 +26,16 @@ def create_project(project_name:str,
         project (bool): If using C#, creates a .csproj instead of a .csx if True
         nullable (bool): If using C#, enables nullable error checking if True
         create_repo (bool): Will initialize a git repository
-        open_project (bool): Will open the project in VS Code if True
+        open_project (bool): Will open the project in VS Code once created if True
+        output (str): Specifies the output path for the project
     """
-    project_path = path.join("projects", language, project_name)
+    # Will change to neater implementation once saving defaults has been implemented
+    output = path.abspath(output)
+    project_path = path.join(output, project_name)
+    if not output:
+        project_path = path.join("projects", language, project_name)
+
+    print(f"output: {output}, project: {project_path}")
     if path.exists(project_path):
         if input("Folder already exists. Do you want to overwrite it's contents?\n(Y) Y/N: ").lower() == 'n':
             print("Exiting program")
@@ -65,20 +73,20 @@ def create_project(project_name:str,
     with open(path.join(project_path, f"{project_name}.{extension}"), "w+") as file:
         file.writelines(template_lines)
 
-    if not nullable:
+    if not nullable and language == "c#":
         with open(path.join(project_path, f"{project_name}.csproj"), 'r') as file:
             content = file.read()
         content = content.replace("<Nullable>enable</Nullable>", "<Nullable>disable</Nullable>")
         with open(path.join(project_path, f"{project_name}.csproj"), 'w') as file:
             content = file.write(content)
 
-    print(f"Successfully created project")
+    print(f"Successfully created project at '{project_path}'")
 
     operating_system = platform_system()
     # Provide execute permissions for the file if on linux
     if operating_system == "Linux":
         if language != "c#": # C# uses 'dotnet new' which already provides permissions
-            os_system(f"chmod +x {path.join(project_path, f"{project_name}.{extension}")}")
+            os_system(f'chmod +x "{path.join(project_path, f"{project_name}.{extension}")}"')
     
     if create_repo: 
         if operating_system == "Windows":
@@ -87,13 +95,13 @@ def create_project(project_name:str,
             next_command = ";"
         else:
             print(f"Error: Unsupported operating system {operating_system}")
-        os_system(f"cd {project_path} {next_command} git init")
+        os_system(f'cd "{project_path}" {next_command} git init')
 
         if language == "python":
             with open(path.join(project_path, ".gitignore"), 'w+') as file:
                 file.write("# Ignore __pycache__\n__pycache__/")
     
     if open_project:
-        os_system(f"code \"{path.abspath(project_path)}\"")
+        os_system(f'code "{path.abspath(project_path)}"')
     
     return
