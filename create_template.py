@@ -105,8 +105,8 @@ class Program
 """)
             if show: print(f"Successfully created 'hello world' at '{file_path}'")
     
-    if show and created > 0:
+    if not show: return
+    if created > 0:
         print(f"Successfully created all missing default templates for '{language}'")
-    else:
-        print(f"All default templates already exist for '{language}'")
-    return
+        return
+    print(f"All default templates already exist for '{language}'")

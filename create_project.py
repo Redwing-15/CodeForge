@@ -3,11 +3,14 @@ from platform import system as platform_system
 from shutil import rmtree
 
 
+LANGUAGES = ["python", "c#"]
+
+
 def create_project(project_name:str,
                    language: str,
                    template: str,
-                   disable_project:bool,
-                   disable_nullable: bool,
+                   project:bool,
+                   nullable: bool,
                    create_repo: bool,
                    open_project: bool) -> None:
     """
@@ -19,8 +22,8 @@ def create_project(project_name:str,
         project_name (str): The name of the project
         language (str): The language that the project will use
         template (str): The template to use for the project
-        disable_project (bool): If using C#, disables the creation of a csproj and instead makes a csx
-        disable_nullable (bool): If using C#, disables nullable error checking when true
+        project (bool): If using C#, creates a .csproj instead of a .csx if True
+        nullable (bool): If using C#, enables nullable error checking if True
         create_repo (bool): Will initialize a git repository
         open_project (bool): Will open the project in VS Code if True
     """
@@ -33,12 +36,11 @@ def create_project(project_name:str,
 
     makedirs(project_path)
     if language == "c#":
-        if disable_project:
+        if project:
+            os_system(f"dotnet new console -n {project_name} -o {project_path}")
+        else:
             extension = "csx"
             shebang = "/usr/bin/env/ dotnet-script"
-        else:
-            print("Dotnet new console")
-            os_system(f"dotnet new console -n {project_name} -o {project_path}")
             
 
     template_path = f"{path.join("templates", language, template)}.txt"
@@ -50,19 +52,20 @@ def create_project(project_name:str,
     if language == "python":
         extension = "py"
         shebang = "/usr/bin/env python3"
-    elif language == "c#" and disable_project == False: 
+    elif language == "c#" and project == True:
         extension = "cs"
         shebang = False
         remove(path.join(project_path, f"Program.cs"))
-    else:
+    elif not language in LANGUAGES:
         print(f"Error: Unsupported language {language}")
-    
+        return
+        
     if shebang:
         template_lines.insert(0, f"#!{shebang}\n")
     with open(path.join(project_path, f"{project_name}.{extension}"), "w+") as file:
         file.writelines(template_lines)
 
-    if disable_nullable:
+    if not nullable:
         with open(path.join(project_path, f"{project_name}.csproj"), 'r') as file:
             content = file.read()
         content = content.replace("<Nullable>enable</Nullable>", "<Nullable>disable</Nullable>")

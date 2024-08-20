@@ -32,8 +32,8 @@ commands:
         usage: codeforge.py create <name> <language> [options]
         optional arguments:
             -t, --template <name>       Use a custom template. Default is 'hello world'
-            -p, --disable-project       Disables the creation of a csproj and instead makes a .csx
-            -n, --disable-nullable      If using C#, disable nullable error checking
+            -p, --project               If using C#, creates a .csproj instead of a .csx
+            -n, --nullable              If using C#, enables nullable error checking
             -r, --repository            Initializes a git repository in the project folder
             -o, --open:                 Opens the project folder via VS Code
 
@@ -74,8 +74,8 @@ def handle_args() -> None:
     create_parser.add_argument("name", type=str, help="The name of the project")
     create_parser.add_argument("language", type=str, help="The programming language for the project")
     create_parser.add_argument("-t", "--template", type=str, default="hello world", help="Use a custom template. Default is 'blank'")
-    create_parser.add_argument("-p", "--disable-project", action='store_true', help="Disables the creation of a csproj and instead makes a .csx")
-    create_parser.add_argument("-n", "--disable_nullable", action="store_true", help="If using C#, disable nullable error checking")
+    create_parser.add_argument("-p", "--project", action='store_true', help="If using C#, creates a .csproj instead of a .csx")
+    create_parser.add_argument("-n", "--nullable", action="store_true", help="If using C#, enables nullable error checking")
     create_parser.add_argument("-r", "--repository", action="store_true", help="Initializes a git repository of in the project folder")
     create_parser.add_argument("-o", "--open", action="store_true", help="Opens the project folder via VS Code")
     # Might possibly add ability to add a custom name for the repository
@@ -134,13 +134,11 @@ def handle_args() -> None:
         print(f"codeforge.py create: error: the following arguments are required: template")
         print(f"for a list of templates, use 'codeforge.py --templates {language}'")
         return
-    
-    if args.disable_project:
+    if args.project:
         if language != "c#":
             print("codeforge.py: error: language chosen is not C#, and thus does not need a project toggle")
             return
-    
-    elif args.template:
+    if args.template:
         template = args.template.lower()
         templates = get_templates(language)
         if not template in templates:
@@ -148,15 +146,15 @@ def handle_args() -> None:
             print(f"for a list of templates, use 'codeforge.py --templates {language}'")
             return
 
-    if args.disable_nullable:
+    if args.nullable:
         if language != "c#":
-            print("codeforge.py: error: language chosen is not C#, and thus does not support disabling of nullable error checking")
+            print("codeforge.py: error: language chosen is not C#, and thus does not support enabling nullable error checking")
             return
-        elif args.disable_project:
-            print("codeforge.py: error: cannot disable nullable error checking for csx file")
+        elif not args.project:
+            print("codeforge.py: error: cannot enable nullable error checking for csx file")
             return
 
-    create_project(project_name, language, args.template.lower(), args.disable_project, args.disable_nullable, args.repository, args.open)
+    create_project(project_name, language, args.template.lower(), args.project, args.nullable, args.repository, args.open)
 
 
 def ask_inputs() -> None:
@@ -172,17 +170,17 @@ def ask_inputs() -> None:
         input("Press enter to exit!")
         return
 
-    disable_project = True
+    project = False
     if not language == "c#":
-        disable_project = False
-    elif (input("\nDo you want to disable the creation of a csproject and instead create a .csx?\n(Y) Y/N: ").lower() == "y"):
-        disable_project = False
+        project = False
+    elif (input("\nDo you want to create a csproject instead of a .csx?\n(Y) Y/N: ").lower() == "y"):
+        project = True
 
-    disable_nullable = True
+    nullable = False
     if not language == "c#":
-        disable_nullable = False
-    elif (input("\nDo you want to disable nullable error checking?\n(Y) Y/N: ").lower() == "y"):
-        disable_nullable = False
+        nullable = False
+    elif (input("\nDo you want to enable nullable error checking?\n(Y) Y/N: ").lower() == "y"):
+        nullable = True
 
     print("")
     templates = get_templates(language, True)
@@ -202,7 +200,7 @@ def ask_inputs() -> None:
     open_project = False
     if input("Do you want to open the project in VS Code?\n(N) Y/N: ") == "y":
         open_project = True
-    create_project(project_name, language, template, disable_project, disable_nullable, create_repo, open_project)
+    create_project(project_name, language, template, project, nullable, create_repo, open_project)
 
 
 def get_templates(language: str, show: bool = False) -> dict:
