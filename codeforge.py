@@ -5,8 +5,8 @@ from glob import glob
 import argparse
 import json
 
-from create_project import create_project
-from create_template import create_template, create_defaults
+from modules.create_project import create_project
+from modules.create_template import create_template, create_defaults
 
 
 LANGUAGES = ["python", "c#"]
@@ -209,7 +209,7 @@ def handle_args() -> None:
             output_path = path.join('.', 'projects', language)
             update_defaults(language, 'output_path', output_path)
         else:
-            output_path = defaults['output']
+            output_path = defaults['output_path']
     create_project(project_name, language, args.template.lower(), args.project, args.nullable, args.repository, args.code, output_path)
 
 
