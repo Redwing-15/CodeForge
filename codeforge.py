@@ -125,10 +125,8 @@ def handle_args() -> None:
     if args.command == "template":
         language = args.language.lower()
         if language not in LANGUAGES:
-            print(f"codeforge.py: error: language '{language}' not supported.")
-            print("for a list of supported languages, use 'codeforge.py --languages'")
-            return
-
+            languageError(language)
+        
         filename = args.name.lower()
         if path.exists(path.abspath(path.join(".", "templates", language, filename))):
             print(f"codeforge.py: error: template '{filename}' already exists.")
@@ -142,9 +140,7 @@ def handle_args() -> None:
     elif args.command == "default":
         language = args.language.lower()
         if language not in LANGUAGES:
-            print(f"codeforge.py: error: language '{language}' not supported.")
-            print("for a list of supported languages, use 'codeforge.py --languages'")
-            return
+            languageError(language)
         
         defaults = get_defaults(language)
         field = args.field.lower()
@@ -170,9 +166,7 @@ def handle_args() -> None:
     language = args.language.lower()
 
     if not language in LANGUAGES:
-        print(f"codeforge.py: error: language '{language}' not supported.")
-        print("for a list of supported languages, use 'codeforge.py --languages'")
-        return
+        languageError(language)
     
     defaults = get_defaults(language)
     if args.template is None:
@@ -211,6 +205,18 @@ def handle_args() -> None:
         else:
             output_path = defaults['output_path']
     create_project(project_name, language, args.template.lower(), args.project, args.nullable, args.repository, args.code, output_path)
+
+
+def languageError(value: str) -> None:
+    """
+    Displays a custom error message for languageErrors.
+
+    Args:
+        value (str): The value that caused the error
+    """
+    print(f"codeforge.py: error: language '{value}' not supported.")
+    print("for a list of supported languages, use 'codeforge.py --languages'")
+    exit()
 
 
 def ask_inputs() -> None:
@@ -259,6 +265,7 @@ def ask_inputs() -> None:
         open_project = True
     create_project(project_name, language, template, project, nullable, create_repo, open_project, defaults['output'])
 
+
 def get_languages(show:bool = False) -> list:
     """
     Returns a list of supported languages.
@@ -302,9 +309,7 @@ def get_defaults(language:str, show:bool = False) -> dict:
         show (bool): Will output all default fields with their value if True. Default is False
     """
     if not language in LANGUAGES:
-        print(f"codeforge.py: error: language '{language}' not supported.")
-        print("for a list of supported languages, use 'codeforge.py -languages'")
-        return
+        languageError(language)
     
     exists = False
     if not path.exists('defaults.json'):
@@ -365,10 +370,8 @@ def get_templates(language: str, show: bool = False) -> dict:
         show (bool, optional): Will output all found templates. Default is False
     """
     if not language in LANGUAGES:
-        print(f"codeforge.py: error: language '{language}' not supported.")
-        print("for a list of supported languages, use 'codeforge.py -languages'")
-        return
-
+        languageError(language)
+    
     folder_path = path.abspath(path.join(".", "templates", language))
     if not path.exists(folder_path):
         makedirs(folder_path)
