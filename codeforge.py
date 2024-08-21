@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-
 from sys import argv
 from os import path, makedirs
 from glob import glob
 import argparse
+import json
 
 from create_project import create_project
 from create_template import create_template, create_defaults
 
 
 LANGUAGES = ["python", "c#"]
-
+IDES = ["vscode"]
 
 def show_help():
     """
@@ -24,7 +24,11 @@ options:
                     Shows the supported languages and exit
     -p, --templates <language>  
                     Shows the templates for a chosen language
-    -g, --generate_defaults <language>
+    -d, --defaults  
+                    Shows the configurable default fields and exit
+    -i, --ides      
+                    Shows the supported IDEs and exit
+    -g, --generate_templates <language>
                     Generates the default template files for a given language
 
 commands:
@@ -41,19 +45,14 @@ commands:
     template        Creates a template
         usage: codeforge.py template <name> <language> [description]
 
+    default         Configures default fields
+        usage: codeforge.py default <field> <value>
+
 examples: 
-    codeforge.py create "my project" c# -n -t "my template"
+    codeforge.py create "my project" c# -p -n -t "my template"
     codeforge.py template "my template" python "A custom description"
+    codeforge.py default ide "vscode"
 """)
-
-
-def show_languages():
-    """
-    Displays the supported languages
-    """
-    print("supported languages:")
-    for item in LANGUAGES:
-        print(item)
 
 
 def handle_args() -> None:
@@ -63,10 +62,12 @@ def handle_args() -> None:
     parser = argparse.ArgumentParser(add_help=False)
 
     # Define optional flags
-    parser.add_argument("-h", "--help", action="store_true", help="Shows this help message and exit")
+    parser.add_argument("-h", "--help", action="store_true", help="Show this help message and exit")
     parser.add_argument("-l", "--languages", action="store_true", help="Show the supported languages and exit")
-    parser.add_argument("-p", "--templates", type=str, help="Show the templates for a chosen language")
-    parser.add_argument("-g", "--generate_defaults", type=str, help="Generates the default template files for a given language")
+    parser.add_argument("-d", "--defaults", action="store_true", help="Show the configurable default fields and exit")
+    parser.add_argument("-i", "--ides", action="store_true", help="Show the supported IDEs and exit")
+    parser.add_argument("-p", "--templates", type=str, help="Show the templates for a chosen language and exit")
+    parser.add_argument("-g", "--generate_templates", type=str, help="Generate the default template files for a given language and exit")
 
     subparsers = parser.add_subparsers(dest="command")
 
@@ -74,13 +75,12 @@ def handle_args() -> None:
     create_parser = subparsers.add_parser("create", help="Creates a project")
     create_parser.add_argument("name", type=str, help="The name of the project")
     create_parser.add_argument("language", type=str, help="The programming language for the project")
-    create_parser.add_argument("-t", "--template", type=str, default="hello world", help="Use a custom template. Default is 'blank'")
+    create_parser.add_argument("-t", "--template", type=str, default="hello world", help="Use a custom template. Default is 'hello world'")
     create_parser.add_argument("-p", "--project", action='store_true', help="If using C#, creates a .csproj instead of a .csx")
     create_parser.add_argument("-n", "--nullable", action="store_true", help="If using C#, enables nullable error checking")
     create_parser.add_argument("-r", "--repository", action="store_true", help="Initializes a git repository of in the project folder")
     create_parser.add_argument("-c", "--code", action="store_true", help="Opens the project folder via VS Code once created")
     create_parser.add_argument("-o", "--output", type=str, default = None, help="Specifies the output path for the project")
-    # Might possibly add ability to add a custom name for the repository
 
     # Define template subcommand
     template_parser = subparsers.add_parser("template", help="Creates a template")
@@ -88,25 +88,39 @@ def handle_args() -> None:
     template_parser.add_argument("language", type=str, help="The programming language for the template")
     template_parser.add_argument("description", type=str, nargs="?", default="A custom template",
                                  help="A description for the template. Default is 'A custom template'")
+    
+    default_parser = subparsers.add_parser("default", help="Configures default fields")
+    default_parser.add_argument("field", type=str, help="The field to be changed e.g output path")
+    default_parser.add_argument("value", type=str, help="The new value")
 
     args = parser.parse_args()
 
-    if args.languages:
-        show_languages()
-        return
-
+    defaults = get_defaults()
     if args.help:
         show_help()
         return
 
+    if args.languages:
+        get_languages(True)
+        return
+    
+    if args.defaults:
+        get_defaults(True)
+        return
+    
+    if args.ides:
+        get_ides(True)
+        return
+    
     if args.templates:
         get_templates(args.templates, True)
         return
 
-    if args.generate_defaults:
-        create_defaults(args.generate_defaults.lower())
+    if args.generate_templates:
+        create_defaults(args.generate_templates.lower())
         return
 
+    # Handle 'template' command
     if args.command == "template":
         language = args.language.lower()
         if language not in LANGUAGES:
@@ -122,7 +136,27 @@ def handle_args() -> None:
 
         create_template(args.name, language, args.description)
         return
-
+    
+    # Handle 'default' command
+    elif args.command == "default":
+        field = args.field.lower()
+        if not field in defaults.keys():
+            print(f"codeforge.py: error: field '{field}' does not exist.")
+            print("for a list of fields, use 'codeforge.py --defaults'")
+            return
+        value = args.value
+        if field == "output":
+            if not path.exists(value):
+                print(f"codeforge.py: error: path '{value}' does not exist.")
+                return
+        elif field == "ide":
+            if not value in IDES:
+                print(f"codeforge.py: error: IDE '{value}' is not supported!")
+                print("for a list of supported IDEs, use 'codeforge.py --ides'")
+                return
+        update_defaults(field, value)
+        return
+    
     # Else, handle create function
     project_name = args.name.lower()
     language = args.language.lower()
@@ -157,19 +191,28 @@ def handle_args() -> None:
             return
 
     if args.output:
-        if not path.exists(args.output):
-            print(f"codeforge.py: error: cannot find path '{args.output}'")
+        output_path = args.output
+        if not path.exists(output_path):
+            print(f"codeforge.py: error: cannot find path '{output_path}'")
             return
-    create_project(project_name, language, args.template.lower(), args.project, args.nullable, args.repository, args.code, args.output)
+    else:
+        if not path.exists(defaults['output']):
+            output_path = path.join('.', 'projects')
+            update_defaults('output', output_path)
+        else:
+            output_path = defaults['output']
+    create_project(project_name, language, args.template.lower(), args.project, args.nullable, args.repository, args.code, output_path)
 
 
 def ask_inputs() -> None:
     """
     Asks user for argument inputs, then runs create_project()
     """
+    defaults = get_defaults(False)
+
     project_name = input("What will the project be called?\nName: ").lower()
 
-    show_languages()
+    get_languages(True)
     language = input("\nWhat language will the project use?\nLanguage: ").lower()
     if language not in LANGUAGES:
         print(f"Error: language '{language}' is not supported.")
@@ -206,14 +249,88 @@ def ask_inputs() -> None:
     open_project = False
     if input("Do you want to open the project in VS Code?\n(N) Y/N: ") == "y":
         open_project = True
-    create_project(project_name, language, template, project, nullable, create_repo, open_project)
+    create_project(project_name, language, template, project, nullable, create_repo, open_project, defaults['output'])
+
+def get_languages(show:bool = False) -> list:
+    """
+    Returns a list of supported languages.
+
+    Can optionally output all supported languages if 'show' is True.
+
+    Args:
+        show (bool): Will output all default languages if True. Default is False
+    """
+    if show:
+        print("Supported languages:")
+        for item in LANGUAGES:
+            print(item)
+    return LANGUAGES
+
+
+def get_ides(show:bool = False) -> list:
+    """
+    Returns a list of supported IDEs.
+
+    Can optionally output all supported IDEs if 'show' is True.
+
+    Args:
+        show (bool): Will output all supported IDEs if True. Default is False
+    """
+    if show:
+        print("Supported IDEs:")
+        for ide in IDES:
+            print(ide)
+    return IDES
+
+
+def get_defaults(show:bool = False) -> dict:
+    """
+    Returns a dictionary of all default fields in the form {field: value}.
+
+    Can optionally output all found templates if 'show' is True.
+
+    Args:
+        show (bool): Will output all default fields with their value if True. Default is False
+    """
+    exists = False
+    if not path.exists('defaults.json'):
+        data = {'output': path.join('.', 'projects'), 'ide': "vscode"}
+        with open('defaults.json', 'w+') as file:
+            json.dump({'fields': data}, file, indent=4)
+        
+    else:
+        exists = True
+        with open("defaults.json", 'r') as file:
+            data = json.load(file)
+            data = data['fields']
+        
+    if show:
+        if not exists:
+            print("Successfully generated default fields")
+        else:
+            print("Fields:")
+            for field in data:
+                print(f"{field}: '{data[field]}'")
+    return data
+
+
+def update_defaults(field:str, value:str) -> None:
+    """
+    Updates a field in the defaults.json file.
+    """
+    defaults = get_defaults(False)
+    defaults[field] = value
+
+    with open('defaults.json', 'w+') as file:
+        json.dump({'fields': defaults}, file, indent=4)
+    return
 
 
 def get_templates(language: str, show: bool = False) -> dict:
     """
     Returns a dictionary of all found template names for a given language in the form {name: path}.
 
-    Can optionally output all found templates if \'show\' is True.
+    Can optionally output all found templates if 'show' is True.
 
     Args:
         language (str): The language to find templates for.
@@ -243,7 +360,6 @@ def get_templates(language: str, show: bool = False) -> dict:
 
     if show and len(templates) == 0:
         print(f"No templates found for {language}")
-
     return templates
 
 

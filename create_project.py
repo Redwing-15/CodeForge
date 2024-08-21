@@ -2,7 +2,6 @@ from os import path, system as os_system, makedirs, remove
 from platform import system as platform_system
 from shutil import rmtree
 
-
 LANGUAGES = ["python", "c#"]
 
 
@@ -29,11 +28,7 @@ def create_project(project_name:str,
         open_project (bool): Will open the project in VS Code once created if True
         output (str): Specifies the output path for the project
     """
-    # Will change to neater implementation once saving defaults has been implemented
-    output = path.abspath(output)
     project_path = path.join(output, project_name)
-    if not output:
-        project_path = path.join("projects", language, project_name)
 
     print(f"output: {output}, project: {project_path}")
     if path.exists(project_path):
