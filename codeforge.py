@@ -5,17 +5,18 @@ from glob import glob
 import argparse
 import json
 
-from modules.classes import Language
+from modules.classes import Language, IDE
 from modules.create_project import create_project
 from modules.create_template import create_template, create_defaults
 
-# Will later add ability to read languages from JSON file
-python = Language(name="python", extension="py", shebang="#!/usr/bin/env python3", gitignore="# Ignore __pycache__\n__pycache__/")
-cs_script = Language(name="c#", extension="csx", shebang="/usr/bin/env/ dotnet-script")
-cs_project = Language(name="c#", extension="cs")
-LANGUAGES = {"python": python, "cs_script": cs_script, "cs_project": cs_project}
+# Will later add ability to read languages and IDEs from JSON file
+Language(name="python", language="python", extension="py", shebang="#!/usr/bin/env python3", gitignore="# Ignore __pycache__\n__pycache__/")
+# Need to re-structure JSON formatting to work with new language implementation
+# Language(name="cs_script", language="c#", extension="csx", shebang="/usr/bin/env/ dotnet-script")
+# Language(name="cs_project", language="c#", extension="cs")
+IDE(name="vscode", open_command="code %PATH%")
 
-IDES = ["vscode"]
+
 
 def show_help():
     """
@@ -131,7 +132,7 @@ def handle_args() -> None:
         language = get_language(args.language)
         
         filename = args.name.lower()
-        if path.exists(path.abspath(path.join(".", "templates", language.name, filename))):
+        if path.exists(path.abspath(path.join(".", "templates", language.language, filename))):
             print(f"codeforge.py: error: template '{filename}' already exists.")
             print("for a list of templates, use 'codeforge.py --templates'")
             return
@@ -143,7 +144,7 @@ def handle_args() -> None:
     elif args.command == "default":
         language = get_language(args.language)
         
-        defaults = get_defaults(language.name)
+        defaults = get_defaults(language.language)
         field = args.field.lower()
         if not field in defaults.keys():
             print(f"codeforge.py: error: field '{field}' does not exist.")
@@ -155,33 +156,33 @@ def handle_args() -> None:
                 print(f"codeforge.py: error: path '{value}' does not exist.")
                 return
         elif field == "ide":
-            if not value in IDES:
+            if not value in get_ides():
                 print(f"codeforge.py: error: IDE '{value}' is not supported!")
                 print("for a list of supported IDEs, use 'codeforge.py --ides'")
                 return
-        update_defaults(language.name, field, value, True)
+        update_defaults(language.language, field, value, True)
         return
     
     # Else, handle create function
     project_name = args.name.lower()
     language = get_language(args.language, args.project)
 
-    defaults = get_defaults(language.name)
+    defaults = get_defaults(language.language)
     if args.template is None:
         print(f"codeforge.py create: error: the following arguments are required: template")
-        print(f"for a list of templates, use 'codeforge.py --templates {language.name}'")
+        print(f"for a list of templates, use 'codeforge.py --templates {language.language}'")
         return
 
     if args.template:
         template = args.template.lower()
-        templates = get_templates(language.name)
+        templates = get_templates(language.language)
         if not template in templates:
-            print(f"codeforge.py: error: template '{template}' not found for {language.name}.")
-            print(f"for a list of templates, use 'codeforge.py --templates {language.name}'")
+            print(f"codeforge.py: error: template '{template}' not found for {language.language}.")
+            print(f"for a list of templates, use 'codeforge.py --templates {language.language}'")
             return
 
     if args.nullable:
-        if language.name != "c#":
+        if language.language != "c#":
             print("codeforge.py: error: language chosen is not C#, and thus does not support enabling nullable error checking")
             return
         elif not args.project:
@@ -195,10 +196,11 @@ def handle_args() -> None:
             return
     else:
         if not path.exists(defaults['output_path']):
-            output_path = path.join('.', 'projects', language.name)
-            update_defaults(language.name, 'output_path', output_path)
+            output_path = path.join('.', 'projects', language.language)
+            update_defaults(language.language, 'output_path', output_path)
         else:
             output_path = defaults['output_path']
+    
     create_project(project_name, language, args.template.lower(), args.nullable, args.repository, args.code, output_path)
 
 
@@ -220,15 +222,15 @@ def ask_inputs() -> None:
         project = True
     language = get_language(language_input, project)
 
-    defaults = get_defaults(language.name)
+    defaults = get_defaults(language.language)
 
     nullable = False
-    if not language.name == "c#":
+    if not language.language == "c#":
         nullable = False
     elif (input("\nDo you want to enable nullable error checking?\n(Y) Y/N: ").lower() == "y"):
         nullable = True
 
-    templates = get_templates(language.name, True)
+    templates = get_templates(language.language, True)
     template = input("\nDo you want to use a template? Leave blank to use default ('blank')\nTemplate: ").lower()
 
     if template == "":
@@ -257,15 +259,21 @@ def get_language(language_name:str, project:bool = False) -> Language | str:
         language_name (str): The name of the language to check.
         project (bool, optional): Use csproj for C#. Defaults to False.
     """
-    for value in LANGUAGES.values():
-        if not value.name.lower() == language_name.lower():
+    for value in Language.languages.values():
+        if not value.language.lower() == language_name.lower():
             continue
-        if project and value.name != "c#":
+        value_name = value.language.lower()
+        # REMOVE WHEN JSON REFORMATTED
+        if value_name != "python":
+            print("Currently this script only works for python.\nNeed to re-structure JSON file formatting to allow for future-language support")
+            exit()
+
+        if project and value_name != "c#":
             print("codeforge.py: error: language chosen is not C#, and thus does not support project toggle")
             exit()
-        value_name = value.name.lower()
+        
         if value_name == "c#" and project:
-            return LANGUAGES["cs_project"]
+            return Language.languages["cs_project"]
         
         return value
     
@@ -286,8 +294,8 @@ def get_languages(show:bool = False) -> list:
     """
     if show: print("Supported languages:")
     languages = []
-    for language in LANGUAGES.values():
-        name = language.name
+    for language in Language.languages.values():
+        name = language.language
         if name in languages:
             continue
 
@@ -305,11 +313,24 @@ def get_ides(show:bool = False) -> list:
     Args:
         show (bool): Will output all supported IDEs if True. Default is False
     """
-    if show:
-        print("Supported IDEs:")
-        for ide in IDES:
-            print(ide)
-    return IDES
+    if show: print("Supported IDEs:")
+    ides = []
+    for ide in IDE.ides.values():
+        name = ide.name
+        if name in ides:
+            continue
+
+        ides.append(name)
+        if show: 
+            # If I just use capitalize() on vscode, then it would appear as Vscode
+            # which looks wrong in my personal opinion thus I just add an edge-case.
+            # Might find a cleaner workaround if this issue crops for future IDEs.
+            if name == "vscode":
+                print("VS Code")
+            else:
+                print(name.capitalize())
+    return ides
+
 
 
 def get_defaults(language_input:str, show:bool = False) -> dict:
@@ -325,16 +346,16 @@ def get_defaults(language_input:str, show:bool = False) -> dict:
     language = get_language(language_input).name
     
     exists = False
-    if not path.exists('defaults.json'):
+    if not path.exists('config.json'):
         data = {}
-        for entry in LANGUAGES:
+        for entry in Language.languages:
             data[entry] = {'output_path': path.join('.', 'projects', entry), 'ide': "vscode"}
-        with open('defaults.json', 'w+') as file:
+        with open('config.json', 'w+') as file:
             json.dump(data, file, indent=4)
         data = data[language]
     else:
         exists = True
-        with open("defaults.json", 'r') as file:
+        with open("config.json", 'r') as file:
             data = json.load(file)
             data = data[language]
         

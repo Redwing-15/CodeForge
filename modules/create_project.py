@@ -1,9 +1,10 @@
 from os import path, system as os_system, makedirs, remove
 from platform import system as platform_system
 from shutil import rmtree
+import json
 
-from modules.classes import Language
-LANGUAGES = ["python", "c#"]
+
+from modules.classes import Language, IDE
 
 
 def create_project(project_name:str,
@@ -40,7 +41,7 @@ def create_project(project_name:str,
         os_system(f'dotnet new console -n {project_name} -o "{project_path}"')
         remove(path.join(project_path, f"Program.cs"))
 
-    template_path = f"{path.join("templates", language.name, template)}.txt"
+    template_path = f"{path.join("templates", language.language, template)}.txt"
     with open(template_path, "r") as file:
         template_lines = file.readlines()
     # Remove first two lines as they are just the template description
@@ -80,6 +81,20 @@ def create_project(project_name:str,
             file.write(language.gitignore)
     
     if open_project:
-        os_system(f'code "{path.abspath(project_path)}"')
+        with open ("defaults.json", "r") as file:
+            data = json.load(file)
+        # Get default language IDE data from JSON dictionary
+        defaults = data[language.language]
+        ide_dict = defaults["ide"]
+        ide = IDE.ides[ide_dict]
+        ide_command = ide.open_command
+
+        if ide_command is None:
+            print(f"codeforge.py: error: IDE '{ide.name}' does not have an open directory command.")
+            return
+
+        # Remove ide.open_command path identifier with actual path
+        command = ide_command.replace("%PATH%", f'"{path.abspath(project_path)}"')
+        os_system(command)
     
     return
