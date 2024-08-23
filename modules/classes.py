@@ -41,17 +41,19 @@ class IDE():
         open_command (str, optional): The command to open the directory with the IDE (e.g., "code 'path/to/directory'" for VS Code).
     """
     ides = {}
-    def __init__(self, *, name:str, open_command:str = None) -> None:
+    def __init__(self, *, display_name: str, name:str, open_command:str = None) -> None:
         """
         Initializes an IDE object with the provided name, and optional open command.
 
         Arguments:
-            name (str): The name of the programming language.
+            display_name (str): The display name for the IDE
+            name (str): The name of the IDE.
             open_command (str): The command to open the directory with the IDE, with the path identifier being denoted by %PATH%. Defaults to None.
         """
+        self.display_name = display_name
         self.name = name.lower()
         self.open_command = open_command
-        IDE.ides[self.name] = self
+        IDE.ides[display_name] = self
         
     def __str__(self) -> str:
         return(f"{self.name.capitalize()}: {self.open_command}")

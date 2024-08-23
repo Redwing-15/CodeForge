@@ -3,7 +3,9 @@ from platform import system as platform_system
 from shutil import rmtree
 import json
 
-
+# Need to use modules.classes as this script is intended to be called
+# from codeforge.py, which is in a parent directory and thus imports must
+# also be called from the parent directory
 from modules.classes import Language, IDE
 
 
@@ -47,9 +49,8 @@ def create_project(project_name:str,
     # Remove first two lines as they are just the template description
     template_lines = template_lines[2:len(template_lines)]
         
-        
     if language.shebang:
-        template_lines.insert(0, f"#!{language.shebang}\n")
+        template_lines.insert(0, f"!#{language.shebang}\n")
     with open(path.join(project_path, f"{project_name}.{language.extension}"), "w+") as file:
         file.writelines(template_lines)
 

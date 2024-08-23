@@ -9,14 +9,6 @@ from modules.classes import Language, IDE
 from modules.create_project import create_project
 from modules.create_template import create_template, create_defaults
 
-# Will later add ability to read languages and IDEs from JSON file
-Language(name="python", language="python", extension="py", shebang="#!/usr/bin/env python3", gitignore="# Ignore __pycache__\n__pycache__/")
-# Need to re-structure JSON formatting to work with new language implementation
-# Language(name="cs_script", language="c#", extension="csx", shebang="/usr/bin/env/ dotnet-script")
-# Language(name="cs_project", language="c#", extension="cs")
-IDE(name="vscode", open_command="code %PATH%")
-
-
 
 def show_help():
     """
@@ -25,17 +17,19 @@ def show_help():
     print("""usage: codeforge.py [options] <project_name> <language> [args]
 
 options:
-    -h, --help      Shows this help message and exit
+    -h, --help      Show this help message and exit
     -l, --languages 
-                    Shows the supported languages and exit
+                    Show the supported languages and exit
     -i, --ides      
-                    Shows the supported IDEs and exit
+                    Show the supported IDEs and exit
     -p, --templates <language>  
-                    Shows the templates for a chosen language
+                    Show the templates for a chosen language and exit
     -d, --defaults  
                     Show the configurable default fields for a chosen language and exit
     -g, --generate_templates <language>
-                    Generates the default template files for a given language
+                    Generates the default template files for a given language and exit
+    -j, --generate_json
+                    "Generate the config.json file and exit"
 
 commands:
     create          Creates a project
@@ -74,6 +68,7 @@ def handle_args() -> None:
     parser.add_argument("-p", "--templates", type=str, help="Show the templates for a chosen language and exit")
     parser.add_argument("-d", "--defaults", type=str, help="Show the configurable default fields for a chosen language and exit")
     parser.add_argument("-g", "--generate_templates", type=str, help="Generate the default template files for a given language and exit")
+    parser.add_argument("-j", "--generate_json", action="store_true", help="Generate the config.json file and exit")
 
     subparsers = parser.add_subparsers(dest="command")
 
@@ -126,6 +121,10 @@ def handle_args() -> None:
     if args.generate_templates:
         create_defaults(args.generate_templates.lower())
         return
+    
+    if args.generate_json:
+        generate_json(True)
+        return
 
     # Handle 'template' command
     if args.command == "template":
@@ -144,7 +143,7 @@ def handle_args() -> None:
     elif args.command == "default":
         language = get_language(args.language)
         
-        defaults = get_defaults(language.language)
+        defaults = get_defaults(language.lname)
         field = args.field.lower()
         if not field in defaults.keys():
             print(f"codeforge.py: error: field '{field}' does not exist.")
@@ -153,21 +152,22 @@ def handle_args() -> None:
         value = args.value
         if field == "output":
             if not path.exists(value):
-                print(f"codeforge.py: error: path '{value}' does not exist.")
+                print(f"codeforge.py: error: directory '{value}' does not exist.")
+                print("note: some operating systems have case-sensitive directories, and thus might throw an error if mis-typed")
                 return
         elif field == "ide":
             if not value in get_ides():
                 print(f"codeforge.py: error: IDE '{value}' is not supported!")
                 print("for a list of supported IDEs, use 'codeforge.py --ides'")
                 return
-        update_defaults(language.language, field, value, True)
+        update_defaults(language.name, field, value, True)
         return
     
     # Else, handle create function
     project_name = args.name.lower()
     language = get_language(args.language, args.project)
 
-    defaults = get_defaults(language.language)
+    defaults = get_defaults(language.name)
     if args.template is None:
         print(f"codeforge.py create: error: the following arguments are required: template")
         print(f"for a list of templates, use 'codeforge.py --templates {language.language}'")
@@ -192,12 +192,13 @@ def handle_args() -> None:
     if args.output:
         output_path = args.output
         if not path.exists(output_path):
-            print(f"codeforge.py: error: cannot find path '{output_path}'")
+            print(f"codeforge.py: error: cannot find directory '{output_path}'")
+            print("note: some operating systems have case-sensitive directories, and thus might throw an error if mis-typed")
             return
     else:
         if not path.exists(defaults['output_path']):
             output_path = path.join('.', 'projects', language.language)
-            update_defaults(language.language, 'output_path', output_path)
+            update_defaults(language.name, 'output_path', output_path)
         else:
             output_path = defaults['output_path']
     
@@ -222,7 +223,7 @@ def ask_inputs() -> None:
         project = True
     language = get_language(language_input, project)
 
-    defaults = get_defaults(language.language)
+    defaults = get_defaults(language.name)
 
     nullable = False
     if not language.language == "c#":
@@ -263,10 +264,6 @@ def get_language(language_name:str, project:bool = False) -> Language | str:
         if not value.language.lower() == language_name.lower():
             continue
         value_name = value.language.lower()
-        # REMOVE WHEN JSON REFORMATTED
-        if value_name != "python":
-            print("Currently this script only works for python.\nNeed to re-structure JSON file formatting to allow for future-language support")
-            exit()
 
         if project and value_name != "c#":
             print("codeforge.py: error: language chosen is not C#, and thus does not support project toggle")
@@ -296,11 +293,9 @@ def get_languages(show:bool = False) -> list:
     languages = []
     for language in Language.languages.values():
         name = language.language
-        if name in languages:
-            continue
 
         languages.append(name)
-        if show: print(name.capitalize())
+        if show: print(f"{name.capitalize()} ({language.name})")
     return languages
 
 
@@ -322,56 +317,111 @@ def get_ides(show:bool = False) -> list:
 
         ides.append(name)
         if show: 
-            # If I just use capitalize() on vscode, then it would appear as Vscode
-            # which looks wrong in my personal opinion thus I just add an edge-case.
-            # Might find a cleaner workaround if this issue crops for future IDEs.
-            if name == "vscode":
-                print("VS Code")
-            else:
-                print(name.capitalize())
+            print(ide.display_name)
     return ides
 
+
+def initialize() -> None:
+    """
+    Initializes languages, IDEs, and other files/folders.
+    """
+    if not path.exists('config.json'):
+        generate_json()
+    
+    with open('config.json', 'r') as file:
+        data = json.load(file)
+
+    # Initialize languages
+    languages = data["languages"]
+    for key, value in languages.items():
+        # Handle cases where JSON does not provide values for "shebang" or "gitignore"
+        shebang = value.get("shebang", None)
+        gitignore = value.get("gitignore", "")
+        Language(name=key, language=value["language"], extension=value["extension"], shebang=shebang, gitignore=gitignore)
+    
+    # Initialize IDEs
+    ides = data["ides"]
+    for key, value in ides.items():
+        # Handle cases where JSON does not provide values for "open_command"
+        open_command = getattr(value, "open_command", None)
+        IDE(display_name=key, name=value["name"], open_command=open_command)
+
+
+def generate_json(show:bool = False) -> None:
+    """
+    Creates the config.json file if not present, otherwise it will overwrite.
+
+    Can optionally provide output message when complete.
+
+    Args:
+        show (bool, optional): Show output message when done. Defaults to False.
+    """
+    json_data = {}
+
+    # Create the language database
+    languages = {}
+    languages["python"] = {"language": "python", "extension": "py", "shebang": "#!/usr/bin/env python3", "gitignore": "# Ignore __pycache__\n__pycache__/"}
+    languages["cs_script"] = {"language": "c#", "extension": "csx", "shebang": "/usr/bin/env/ dotnet-script"}
+    languages["cs_project"] = {"language": "c#", "extension": "cs"}
+
+    # Create the IDE database
+    ides = {}
+    ides["VS Code"] = {"name": "vscode", "open_command": "code %PATH%"}
+
+    # Generate the defaults database
+    defaults = {}
+    for language, value in languages.items():
+        defaults[language] = {'output_path': path.join('.', 'projects', value["language"]), 'ide': "vscode"}
+
+    # Compile into single dictionary
+    json_data["languages"] = languages
+    json_data["ides"] = ides
+    json_data["defaults"] = defaults
+
+    with open('config.json', 'w+') as file:
+        json.dump(json_data, file, indent=4)
+
+    if show:
+        print("Successfully created config file.")
 
 
 def get_defaults(language_input:str, show:bool = False) -> dict:
     """
     Returns a dictionary of all default fields for a given langauge in the form {field: value}.
 
-    Can optionally output all found templates if 'show' is True.
+    Can optionally output all found fields if 'show' is True.
 
     Args:
         language (str): The language to get the default fields for
         show (bool): Will output all default fields with their value if True. Default is False
     """
-    language = get_language(language_input).name
-    
-    exists = False
     if not path.exists('config.json'):
-        data = {}
-        for entry in Language.languages:
-            data[entry] = {'output_path': path.join('.', 'projects', entry), 'ide': "vscode"}
-        with open('config.json', 'w+') as file:
-            json.dump(data, file, indent=4)
-        data = data[language]
-    else:
-        exists = True
-        with open("config.json", 'r') as file:
-            data = json.load(file)
-            data = data[language]
+        # If no config.json, then classes may not be loaded.
+        # This should never happen, but just to be safe, re-initialize.
+        initialize()
+    
+    language = language_input.lower()
+    if language not in Language.languages.keys():
+        print(f"codeforge.py: error: Config for language '{language}' not found.")
+        print("for a list of configurable languages, use 'codeforge.py --languages'.")
+        print("note: when modifying configs, ensure that you use the name INSIDE of the brackets as the <language>.")
+        exit()
+    
+    with open("config.json", 'r') as file:
+        data = json.load(file)
+        defaults_data = data["defaults"]
+        language_defaults = defaults_data[language]
         
     if show:
-        if not exists:
-            print("Successfully generated default fields")
-        else:
-            print(f"Default {language} fields:")
-            for field in data:
-                print(f"{field}: '{data[field]}'")
-    return data
+        print(f"Default {language} fields:")
+        for key, value in language_defaults.items():
+            print(f"{key}: '{value}'")
+    return language_defaults
 
 
 def update_defaults(language:str, field:str, value:str, show:str = False) -> None:
     """
-    Updates a field in the defaults.json file.
+    Updates a default field in the config.json file.
 
     Can optionally output a complete message if 'show' is True.
     Args:
@@ -380,12 +430,13 @@ def update_defaults(language:str, field:str, value:str, show:str = False) -> Non
         value (str): The new value of the field
         show (bool): Will output a completion message when done if True. Default is False
     """
-    with open("defaults.json", 'r') as file:
+    with open("config.json", 'r') as file:
         data = json.load(file)
-    defaults = data[language]
-    defaults[field] = value
+    default_data = data["defaults"]
+    language_data = default_data[language]
+    language_data[field] = value
 
-    with open('defaults.json', 'w+') as file:
+    with open('config.json', 'w+') as file:
         json.dump(data, file, indent=4)
 
     if show:
@@ -403,7 +454,7 @@ def get_templates(language_input: str, show: bool = False) -> dict:
         language_input (str): The language to find templates for.
         show (bool, optional): Will output all found templates. Default is False
     """
-    language = get_language(language_input).name
+    language = get_language(language_input).language
     
     folder_path = path.abspath(path.join(".", "templates", language))
     if not path.exists(folder_path):
@@ -428,6 +479,7 @@ def get_templates(language_input: str, show: bool = False) -> dict:
 
 
 if __name__ == "__main__":
+    initialize()
     # Check if arguments have been given
     # if not, ask for inputs manually
     if len(argv) >= 2:
