@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 from sys import argv
-from os import path, makedirs
-from glob import glob
+from os import path
 import argparse
 import json
 
 from modules.classes import Language, IDE
+from modules.functions import get_language, get_languages, get_ides, get_templates, get_defaults, update_defaults, generate_json
 from modules.create_project import create_project
 from modules.create_template import create_template, create_defaults
 
 
 def show_help():
     """
-    Displays the help message
+    Displays the help message.
     """
     print("""usage: codeforge.py [options] <project_name> <language> [args]
 
@@ -27,7 +27,7 @@ options:
     -d, --defaults  
                     Show the configurable default fields for a chosen language and exit
     -g, --generate_templates <language>
-                    Generates the default template files for a given language and exit
+                    Generate the default template files for a given language and exit
     -j, --generate_json
                     "Generate the config.json file and exit"
 
@@ -39,25 +39,25 @@ commands:
             -p, --project               If using C#, creates a .csproj instead of a .csx
             -n, --nullable              If using C#, enables nullable error checking
             -r, --repository            Initializes a git repository in the project folder
-            -c, --code:                 Opens the project folder via VS Code once created
-            -o, --output:               Specifies the output path for the project
+            -c, --code                  Opens the project folder via VS Code once created
+            -o, --output                Specifies the output path for the project
 
     template        Creates a template
         usage: codeforge.py template <name> <language> [description]
 
     default         Configures default fields
-        usage: codeforge.py default <field> <value>
+        usage: codeforge.py default <language> <field> <value>
 
 examples: 
     codeforge.py create "my project" c# -p -n -t "my template"
     codeforge.py template "my template" python "A custom description"
-    codeforge.py default ide "vscode"
+    codeforge.py default pyhon ide "vscode"
 """)
 
 
 def handle_args() -> None:
     """
-    Handles provided arguments, then runs create_project
+    Handles provided arguments, then runs create_project().
     """
     parser = argparse.ArgumentParser(add_help=False)
 
@@ -79,7 +79,7 @@ def handle_args() -> None:
     create_parser.add_argument("-t", "--template", type=str, default="hello world", help="Use a custom template. Default is 'hello world'")
     create_parser.add_argument("-p", "--project", action='store_true', help="If using C#, creates a .csproj instead of a .csx")
     create_parser.add_argument("-n", "--nullable", action="store_true", help="If using C#, enables nullable error checking")
-    create_parser.add_argument("-r", "--repository", action="store_true", help="Initializes a git repository of in the project folder")
+    create_parser.add_argument("-r", "--repository", action="store_true", help="Initializes a git repository in the project folder")
     create_parser.add_argument("-c", "--code", action="store_true", help="Opens the project folder via VS Code once created")
     create_parser.add_argument("-o", "--output", type=str, default = None, help="Specifies the output path for the project")
 
@@ -207,7 +207,7 @@ def handle_args() -> None:
 
 def ask_inputs() -> None:
     """
-    Asks user for argument inputs, then runs create_project()
+    Asks user for argument inputs, then runs create_project().
     """
     project_name = input("What will the project be called?\nName: ").lower()
 
@@ -251,79 +251,9 @@ def ask_inputs() -> None:
     create_project(project_name, language, template, nullable, create_repo, open_project, defaults['output'])
 
 
-def get_language(language_name:str, project:bool = False) -> Language | str:
-    """
-    Checks if a language is supported or not, and then returns the Language object for said language.
-
-    Will throw an error if language is not supported.
-    Arguments:
-        language_name (str): The name of the language to check.
-        project (bool, optional): Use csproj for C#. Defaults to False.
-    """
-    for value in Language.languages.values():
-        if not value.language.lower() == language_name.lower():
-            continue
-        value_name = value.language.lower()
-
-        if project and value_name != "c#":
-            print("codeforge.py: error: language chosen is not C#, and thus does not support project toggle")
-            exit()
-        
-        if value_name == "c#" and project:
-            return Language.languages["cs_project"]
-        
-        return value
-    
-    # If still in function, then language is not in LANGUAGES
-    print(f"codeforge.py: error: language '{language_name}' not supported.")
-    print("for a list of supported languages, use 'codeforge.py --languages'")
-    exit()
-
-
-def get_languages(show:bool = False) -> list:
-    """
-    Returns a list of supported languages.
-
-    Can optionally output all supported languages if 'show' is True.
-
-    Args:
-        show (bool): Will output all default languages if True. Default is False
-    """
-    if show: print("Supported languages:")
-    languages = []
-    for language in Language.languages.values():
-        name = language.language
-
-        languages.append(name)
-        if show: print(f"{name.capitalize()} ({language.name})")
-    return languages
-
-
-def get_ides(show:bool = False) -> list:
-    """
-    Returns a list of supported IDEs.
-
-    Can optionally output all supported IDEs if 'show' is True.
-
-    Args:
-        show (bool): Will output all supported IDEs if True. Default is False
-    """
-    if show: print("Supported IDEs:")
-    ides = []
-    for ide in IDE.ides.values():
-        name = ide.name
-        if name in ides:
-            continue
-
-        ides.append(name)
-        if show: 
-            print(ide.display_name)
-    return ides
-
-
 def initialize() -> None:
     """
-    Initializes languages, IDEs, and other files/folders.
+    Initializes language and IDE objects.
     """
     if not path.exists('config.json'):
         generate_json()
@@ -345,137 +275,6 @@ def initialize() -> None:
         # Handle cases where JSON does not provide values for "open_command"
         open_command = getattr(value, "open_command", None)
         IDE(display_name=key, name=value["name"], open_command=open_command)
-
-
-def generate_json(show:bool = False) -> None:
-    """
-    Creates the config.json file if not present, otherwise it will overwrite.
-
-    Can optionally provide output message when complete.
-
-    Args:
-        show (bool, optional): Show output message when done. Defaults to False.
-    """
-    json_data = {}
-
-    # Create the language database
-    languages = {}
-    languages["python"] = {"language": "python", "extension": "py", "shebang": "#!/usr/bin/env python3", "gitignore": "# Ignore __pycache__\n__pycache__/"}
-    languages["cs_script"] = {"language": "c#", "extension": "csx", "shebang": "/usr/bin/env/ dotnet-script"}
-    languages["cs_project"] = {"language": "c#", "extension": "cs"}
-
-    # Create the IDE database
-    ides = {}
-    ides["VS Code"] = {"name": "vscode", "open_command": "code %PATH%"}
-
-    # Generate the defaults database
-    defaults = {}
-    for language, value in languages.items():
-        defaults[language] = {'output_path': path.join('.', 'projects', value["language"]), 'ide': "vscode"}
-
-    # Compile into single dictionary
-    json_data["languages"] = languages
-    json_data["ides"] = ides
-    json_data["defaults"] = defaults
-
-    with open('config.json', 'w+') as file:
-        json.dump(json_data, file, indent=4)
-
-    if show:
-        print("Successfully created config file.")
-
-
-def get_defaults(language_input:str, show:bool = False) -> dict:
-    """
-    Returns a dictionary of all default fields for a given langauge in the form {field: value}.
-
-    Can optionally output all found fields if 'show' is True.
-
-    Args:
-        language (str): The language to get the default fields for
-        show (bool): Will output all default fields with their value if True. Default is False
-    """
-    if not path.exists('config.json'):
-        # If no config.json, then classes may not be loaded.
-        # This should never happen, but just to be safe, re-initialize.
-        initialize()
-    
-    language = language_input.lower()
-    if language not in Language.languages.keys():
-        print(f"codeforge.py: error: Config for language '{language}' not found.")
-        print("for a list of configurable languages, use 'codeforge.py --languages'.")
-        print("note: when modifying configs, ensure that you use the name INSIDE of the brackets as the <language>.")
-        exit()
-    
-    with open("config.json", 'r') as file:
-        data = json.load(file)
-        defaults_data = data["defaults"]
-        language_defaults = defaults_data[language]
-        
-    if show:
-        print(f"Default {language} fields:")
-        for key, value in language_defaults.items():
-            print(f"{key}: '{value}'")
-    return language_defaults
-
-
-def update_defaults(language:str, field:str, value:str, show:str = False) -> None:
-    """
-    Updates a default field in the config.json file.
-
-    Can optionally output a complete message if 'show' is True.
-    Args:
-        language_input (str): The language to change a field of
-        field (str): The name of the field to update
-        value (str): The new value of the field
-        show (bool): Will output a completion message when done if True. Default is False
-    """
-    with open("config.json", 'r') as file:
-        data = json.load(file)
-    default_data = data["defaults"]
-    language_data = default_data[language]
-    language_data[field] = value
-
-    with open('config.json', 'w+') as file:
-        json.dump(data, file, indent=4)
-
-    if show:
-        print(f"Successfully updated field '{field}'")
-    return
-
-
-def get_templates(language_input: str, show: bool = False) -> dict:
-    """
-    Returns a dictionary of all found template names for a given language in the form {name: path}.
-
-    Can optionally output all found templates if 'show' is True.
-
-    Args:
-        language_input (str): The language to find templates for.
-        show (bool, optional): Will output all found templates. Default is False
-    """
-    language = get_language(language_input).language
-    
-    folder_path = path.abspath(path.join(".", "templates", language))
-    if not path.exists(folder_path):
-        makedirs(folder_path)
-        create_defaults(language, False)
-
-    if show:
-        print(f"{language} templates:")
-    templates = {}
-    for template in glob(path.join(folder_path, "*.txt")):
-        filename = template[len(folder_path) + 1 : -4].lower()
-        templates[filename] = template
-        if show:
-            with open(template, "r") as file:
-                desc = file.readlines()[1][2:]
-                file.close()
-            print(f"{filename}:    {desc}")
-
-    if show and len(templates) == 0:
-        print(f"No templates found for {language}")
-    return templates
 
 
 if __name__ == "__main__":

@@ -1,13 +1,12 @@
 from os import path, system as os_system, makedirs, remove
 from platform import system as platform_system
 from shutil import rmtree
-import json
 
 # Need to use modules.classes as this script is intended to be called
 # from codeforge.py, which is in a parent directory and thus imports must
 # also be called from the parent directory
 from modules.classes import Language, IDE
-
+from modules.functions import get_defaults
 
 def create_project(project_name:str,
                    language: Language,
@@ -46,7 +45,7 @@ def create_project(project_name:str,
     template_path = f"{path.join("templates", language.language, template)}.txt"
     with open(template_path, "r") as file:
         template_lines = file.readlines()
-    # Remove first two lines as they are just the template description
+    # Remove first two lines as they only include template description
     template_lines = template_lines[2:len(template_lines)]
         
     if language.shebang:
@@ -66,7 +65,7 @@ def create_project(project_name:str,
     operating_system = platform_system()
     # Provide execute permissions for the file if on linux
     if operating_system == "Linux":
-        if language != "c#": # C# uses 'dotnet new' which already provides permissions
+        if language.language != "c#": # C# uses 'dotnet new' which already provides permissions
             os_system(f'chmod +x "{path.join(project_path, f"{project_name}.{language.extension}")}"')
     
     if create_repo: 
@@ -82,11 +81,7 @@ def create_project(project_name:str,
             file.write(language.gitignore)
     
     if open_project:
-        with open ("defaults.json", "r") as file:
-            data = json.load(file)
-        # Get default language IDE data from JSON dictionary
-        defaults = data[language.language]
-        ide_dict = defaults["ide"]
+        ide_dict = get_defaults(language.name)["ide"]
         ide = IDE.ides[ide_dict]
         ide_command = ide.open_command
 
