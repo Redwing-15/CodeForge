@@ -4,4 +4,4 @@ modules/__pycache__/
 # Ignore auto-generated files and folders
 projects/
 templates/
-defaults.json
+config.json
