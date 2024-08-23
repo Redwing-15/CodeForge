@@ -5,11 +5,16 @@ from glob import glob
 import argparse
 import json
 
+from modules.classes import Language
 from modules.create_project import create_project
 from modules.create_template import create_template, create_defaults
 
+# Will later add ability to read languages from JSON file
+python = Language(name="python", extension="py", shebang="#!/usr/bin/env python3", gitignore="# Ignore __pycache__\n__pycache__/")
+cs_script = Language(name="c#", extension="csx", shebang="/usr/bin/env/ dotnet-script")
+cs_project = Language(name="c#", extension="cs")
+LANGUAGES = {"python": python, "cs_script": cs_script, "cs_project": cs_project}
 
-LANGUAGES = ["python", "c#"]
 IDES = ["vscode"]
 
 def show_help():
@@ -123,12 +128,10 @@ def handle_args() -> None:
 
     # Handle 'template' command
     if args.command == "template":
-        language = args.language.lower()
-        if language not in LANGUAGES:
-            languageError(language)
+        language = get_language(args.language)
         
         filename = args.name.lower()
-        if path.exists(path.abspath(path.join(".", "templates", language, filename))):
+        if path.exists(path.abspath(path.join(".", "templates", language.name, filename))):
             print(f"codeforge.py: error: template '{filename}' already exists.")
             print("for a list of templates, use 'codeforge.py --templates'")
             return
@@ -138,11 +141,9 @@ def handle_args() -> None:
     
     # Handle 'default' command
     elif args.command == "default":
-        language = args.language.lower()
-        if language not in LANGUAGES:
-            languageError(language)
+        language = get_language(args.language)
         
-        defaults = get_defaults(language)
+        defaults = get_defaults(language.name)
         field = args.field.lower()
         if not field in defaults.keys():
             print(f"codeforge.py: error: field '{field}' does not exist.")
@@ -158,35 +159,29 @@ def handle_args() -> None:
                 print(f"codeforge.py: error: IDE '{value}' is not supported!")
                 print("for a list of supported IDEs, use 'codeforge.py --ides'")
                 return
-        update_defaults(language, field, value, True)
+        update_defaults(language.name, field, value, True)
         return
     
     # Else, handle create function
     project_name = args.name.lower()
-    language = args.language.lower()
+    language = get_language(args.language, args.project)
 
-    if not language in LANGUAGES:
-        languageError(language)
-    
-    defaults = get_defaults(language)
+    defaults = get_defaults(language.name)
     if args.template is None:
         print(f"codeforge.py create: error: the following arguments are required: template")
-        print(f"for a list of templates, use 'codeforge.py --templates {language}'")
+        print(f"for a list of templates, use 'codeforge.py --templates {language.name}'")
         return
-    if args.project:
-        if language != "c#":
-            print("codeforge.py: error: language chosen is not C#, and thus does not need a project toggle")
-            return
+
     if args.template:
         template = args.template.lower()
-        templates = get_templates(language)
+        templates = get_templates(language.name)
         if not template in templates:
-            print(f"codeforge.py: error: template '{template}' not found for {language}.")
-            print(f"for a list of templates, use 'codeforge.py --templates {language}'")
+            print(f"codeforge.py: error: template '{template}' not found for {language.name}.")
+            print(f"for a list of templates, use 'codeforge.py --templates {language.name}'")
             return
 
     if args.nullable:
-        if language != "c#":
+        if language.name != "c#":
             print("codeforge.py: error: language chosen is not C#, and thus does not support enabling nullable error checking")
             return
         elif not args.project:
@@ -200,23 +195,11 @@ def handle_args() -> None:
             return
     else:
         if not path.exists(defaults['output_path']):
-            output_path = path.join('.', 'projects', language)
-            update_defaults(language, 'output_path', output_path)
+            output_path = path.join('.', 'projects', language.name)
+            update_defaults(language.name, 'output_path', output_path)
         else:
             output_path = defaults['output_path']
-    create_project(project_name, language, args.template.lower(), args.project, args.nullable, args.repository, args.code, output_path)
-
-
-def languageError(value: str) -> None:
-    """
-    Displays a custom error message for languageErrors.
-
-    Args:
-        value (str): The value that caused the error
-    """
-    print(f"codeforge.py: error: language '{value}' not supported.")
-    print("for a list of supported languages, use 'codeforge.py --languages'")
-    exit()
+    create_project(project_name, language, args.template.lower(), args.nullable, args.repository, args.code, output_path)
 
 
 def ask_inputs() -> None:
@@ -226,28 +209,27 @@ def ask_inputs() -> None:
     project_name = input("What will the project be called?\nName: ").lower()
 
     get_languages(True)
-    language = input("\nWhat language will the project use?\nLanguage: ").lower()
-    if language not in LANGUAGES:
-        print(f"Error: language '{language}' is not supported.")
+    language_input = input("\nWhat language will the project use?\nLanguage: ").lower()
+    if not language_input in get_languages():
+        print(f"Error: language '{language_input}' not supported.")
         input("Press enter to exit!")
         return
-
-    defaults = get_defaults(language)
+    
     project = False
-    if not language == "c#":
-        project = False
-    elif (input("\nDo you want to create a csproject instead of a .csx?\n(Y) Y/N: ").lower() == "y"):
+    if language_input.lower() == "c#" and (input("\nDo you want to create a csproject instead of a .csx?\n(Y) Y/N: ").lower() == "y"):
         project = True
+    language = get_language(language_input, project)
+
+    defaults = get_defaults(language.name)
 
     nullable = False
-    if not language == "c#":
+    if not language.name == "c#":
         nullable = False
     elif (input("\nDo you want to enable nullable error checking?\n(Y) Y/N: ").lower() == "y"):
         nullable = True
 
-    print("")
-    templates = get_templates(language, True)
-    template = input("Do you want to use a template? Leave blank to use default ('blank')\nTemplate: ").lower()
+    templates = get_templates(language.name, True)
+    template = input("\nDo you want to use a template? Leave blank to use default ('blank')\nTemplate: ").lower()
 
     if template == "":
         template = "blank"
@@ -263,7 +245,34 @@ def ask_inputs() -> None:
     open_project = False
     if input("Do you want to open the project in VS Code?\n(N) Y/N: ") == "y":
         open_project = True
-    create_project(project_name, language, template, project, nullable, create_repo, open_project, defaults['output'])
+    create_project(project_name, language, template, nullable, create_repo, open_project, defaults['output'])
+
+
+def get_language(language_name:str, project:bool = False) -> Language | str:
+    """
+    Checks if a language is supported or not, and then returns the Language object for said language.
+
+    Will throw an error if language is not supported.
+    Arguments:
+        language_name (str): The name of the language to check.
+        project (bool, optional): Use csproj for C#. Defaults to False.
+    """
+    for value in LANGUAGES.values():
+        if not value.name.lower() == language_name.lower():
+            continue
+        if project and value.name != "c#":
+            print("codeforge.py: error: language chosen is not C#, and thus does not support project toggle")
+            exit()
+        value_name = value.name.lower()
+        if value_name == "c#" and project:
+            return LANGUAGES["cs_project"]
+        
+        return value
+    
+    # If still in function, then language is not in LANGUAGES
+    print(f"codeforge.py: error: language '{language_name}' not supported.")
+    print("for a list of supported languages, use 'codeforge.py --languages'")
+    exit()
 
 
 def get_languages(show:bool = False) -> list:
@@ -275,11 +284,16 @@ def get_languages(show:bool = False) -> list:
     Args:
         show (bool): Will output all default languages if True. Default is False
     """
-    if show:
-        print("Supported languages:")
-        for item in LANGUAGES:
-            print(item)
-    return LANGUAGES
+    if show: print("Supported languages:")
+    languages = []
+    for language in LANGUAGES.values():
+        name = language.name
+        if name in languages:
+            continue
+
+        languages.append(name)
+        if show: print(name.capitalize())
+    return languages
 
 
 def get_ides(show:bool = False) -> list:
@@ -298,7 +312,7 @@ def get_ides(show:bool = False) -> list:
     return IDES
 
 
-def get_defaults(language:str, show:bool = False) -> dict:
+def get_defaults(language_input:str, show:bool = False) -> dict:
     """
     Returns a dictionary of all default fields for a given langauge in the form {field: value}.
 
@@ -308,8 +322,7 @@ def get_defaults(language:str, show:bool = False) -> dict:
         language (str): The language to get the default fields for
         show (bool): Will output all default fields with their value if True. Default is False
     """
-    if not language in LANGUAGES:
-        languageError(language)
+    language = get_language(language_input).name
     
     exists = False
     if not path.exists('defaults.json'):
@@ -341,7 +354,7 @@ def update_defaults(language:str, field:str, value:str, show:str = False) -> Non
 
     Can optionally output a complete message if 'show' is True.
     Args:
-        language (str): The language to change a field of
+        language_input (str): The language to change a field of
         field (str): The name of the field to update
         value (str): The new value of the field
         show (bool): Will output a completion message when done if True. Default is False
@@ -359,18 +372,17 @@ def update_defaults(language:str, field:str, value:str, show:str = False) -> Non
     return
 
 
-def get_templates(language: str, show: bool = False) -> dict:
+def get_templates(language_input: str, show: bool = False) -> dict:
     """
     Returns a dictionary of all found template names for a given language in the form {name: path}.
 
     Can optionally output all found templates if 'show' is True.
 
     Args:
-        language (str): The language to find templates for.
+        language_input (str): The language to find templates for.
         show (bool, optional): Will output all found templates. Default is False
     """
-    if not language in LANGUAGES:
-        languageError(language)
+    language = get_language(language_input).name
     
     folder_path = path.abspath(path.join(".", "templates", language))
     if not path.exists(folder_path):
