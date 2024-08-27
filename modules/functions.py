@@ -125,7 +125,7 @@ def get_defaults(language_input:str, show:bool = False) -> dict:
         print("note: when modifying configs, ensure that you use the name INSIDE of the brackets as the <language>.")
         exit()
     
-    with open("config.json", 'r') as file:
+    with open('config.json', 'r') as file:
         data = json.load(file)
         defaults_data = data["defaults"]
         language_defaults = defaults_data[language]
@@ -158,6 +158,32 @@ def update_defaults(language:str, field:str, value:str, show:str = False) -> Non
 
     if show:
         print(f"Successfully updated field '{field}'")
+    return
+
+
+def generate_defaults(language_input:str, show:bool = False) -> None:
+    """
+    Generates the default config files for a specified language
+
+    Arguments:
+        language (str): The language to generate default configs for.
+        show (bool, optional): Display output. Defaults to False.
+    """
+    with open("config.json", 'r') as file:
+        data = json.load(file)
+    default_data = data["defaults"]
+
+    if default_data.get(language_input, False):
+        print(f"All default configs already exist for '{language_input}'")
+        return
+    
+    for language, value in Language.languages.items():
+        default_data[language_input] = {'output_path': path.join('.', 'projects', language), 'ide': "vscode"}
+    
+    with open('config.json', 'w+') as file:
+        json.dump(data, file, indent=4)
+    if show:
+        print(f"Successfully generated default configs for {language_input}")
     return
 
 

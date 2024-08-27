@@ -5,7 +5,7 @@ import argparse
 import json
 
 from modules.classes import Language, IDE
-from modules.functions import get_language, get_languages, get_ides, get_templates, get_defaults, update_defaults, generate_json
+from modules.functions import get_language, get_languages, get_ides, get_templates, get_defaults, update_defaults, generate_defaults, generate_json
 from modules.create_project import create_project
 from modules.create_template import create_template, create_defaults
 
@@ -26,8 +26,8 @@ options:
                     Show the templates for a chosen language and exit
     -d, --defaults  
                     Show the configurable default fields for a chosen language and exit
-    -g, --generate_templates <language>
-                    Generate the default template files for a given language and exit
+    -g, --generate_defaults <language>
+                    Generate the default template files and default configs for a given language and exit
     -j, --generate_json
                     "Generate the config.json file and exit"
 
@@ -67,7 +67,7 @@ def handle_args() -> None:
     parser.add_argument("-i", "--ides", action="store_true", help="Show the supported IDEs and exit")
     parser.add_argument("-p", "--templates", type=str, help="Show the templates for a chosen language and exit")
     parser.add_argument("-d", "--defaults", type=str, help="Show the configurable default fields for a chosen language and exit")
-    parser.add_argument("-g", "--generate_templates", type=str, help="Generate the default template files for a given language and exit")
+    parser.add_argument("-g", "--generate_defaults", type=str, help="Generate the default template files and default configs for a given language and exit")
     parser.add_argument("-j", "--generate_json", action="store_true", help="Generate the config.json file and exit")
 
     subparsers = parser.add_subparsers(dest="command")
@@ -118,8 +118,9 @@ def handle_args() -> None:
         get_defaults(args.defaults, True)
         return
 
-    if args.generate_templates:
-        create_defaults(args.generate_templates.lower())
+    if args.generate_defaults:
+        generate_defaults(args.generate_defaults.lower())
+        create_defaults(args.generate_defaults.lower())
         return
     
     if args.generate_json:
