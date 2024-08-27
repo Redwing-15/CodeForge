@@ -144,7 +144,7 @@ def handle_args() -> None:
     elif args.command == "default":
         language = get_language(args.language)
         
-        defaults = get_defaults(language.lname)
+        defaults = get_defaults(language.name)
         field = args.field.lower()
         if not field in defaults.keys():
             print(f"codeforge.py: error: field '{field}' does not exist.")
