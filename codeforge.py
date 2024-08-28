@@ -35,7 +35,7 @@ commands:
     create          Creates a project
         usage: codeforge.py create <name> <language> [options]
         optional arguments:
-            -t, --template <name>       Use a custom template. Default is 'hello world'
+            -t, --template <name>       Use a custom template. Defaults to the language default.
             -p, --project               If using C#, creates a .csproj instead of a .csx
             -n, --nullable              If using C#, enables nullable error checking
             -r, --repository            Initializes a git repository in the project folder
@@ -76,7 +76,7 @@ def handle_args() -> None:
     create_parser = subparsers.add_parser("create", help="Creates a project")
     create_parser.add_argument("name", type=str, help="The name of the project")
     create_parser.add_argument("language", type=str, help="The programming language for the project")
-    create_parser.add_argument("-t", "--template", type=str, default="hello world", help="Use a custom template. Default is 'hello world'")
+    create_parser.add_argument("-t", "--template", type=str, default=None, help="Use a custom template. Defaults to the language default")
     create_parser.add_argument("-p", "--project", action='store_true', help="If using C#, creates a .csproj instead of a .csx")
     create_parser.add_argument("-n", "--nullable", action="store_true", help="If using C#, enables nullable error checking")
     create_parser.add_argument("-r", "--repository", action="store_true", help="Initializes a git repository in the project folder")
@@ -119,8 +119,9 @@ def handle_args() -> None:
         return
 
     if args.generate_defaults:
-        generate_defaults(args.generate_defaults.lower())
-        create_defaults(args.generate_defaults.lower())
+        language = get_language(args.generate_defaults)
+        generate_defaults(language.name)
+        create_defaults(language.language)
         return
     
     if args.generate_json:
@@ -169,10 +170,6 @@ def handle_args() -> None:
     language = get_language(args.language, args.project)
 
     defaults = get_defaults(language.name)
-    if args.template is None:
-        print(f"codeforge.py create: error: the following arguments are required: template")
-        print(f"for a list of templates, use 'codeforge.py --templates {language.language}'")
-        return
 
     if args.template:
         template = args.template.lower()
@@ -181,6 +178,9 @@ def handle_args() -> None:
             print(f"codeforge.py: error: template '{template}' not found for {language.language}.")
             print(f"for a list of templates, use 'codeforge.py --templates {language.language}'")
             return
+    else:
+        get_templates(language.language)
+        template = defaults['template']
 
     if args.nullable:
         if language.language != "c#":
@@ -203,7 +203,7 @@ def handle_args() -> None:
         else:
             output_path = defaults['output_path']
     
-    create_project(project_name, language, args.template.lower(), args.nullable, args.repository, args.code, output_path)
+    create_project(project_name, language, template, args.nullable, args.repository, args.code, output_path)
 
 
 def ask_inputs() -> None:

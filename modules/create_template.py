@@ -28,7 +28,6 @@ def create_template(filename: str, language:str, desc: str, show: bool = True) -
         create_defaults(language, False)
 
     file_path = get_file_path(filename, language)
-    print(file_path)
     with open(file_path, "w+") as template:
         template.write(f"# Description:\n# {desc}\n")
 
@@ -50,14 +49,9 @@ def create_defaults(language:str, show: bool = True) -> None:
     makedirs(path.join("templates", language), exist_ok=True)
 
     created = 0
+    # Create python templates
     if language == "python":
-        file_path = get_file_path("blank", "python")
-        if not path.exists(file_path):
-            created += 1
-            with open(file_path, 'w+') as template:
-                template.write(f"# Description:\n# A blank file\n")
-            if show: print(f"Successfully created 'blank' at '{file_path}'")
-
+        # Create 'hello world'
         file_path = get_file_path("hello world", "python")
         if not path.exists(file_path):
             created += 1
@@ -66,6 +60,7 @@ def create_defaults(language:str, show: bool = True) -> None:
                 template.write("print(\"Hello, World!\")\n")
             if show: print(f"Successfully created 'hello, world!' at '{file_path}'")
 
+        # Create 'if name main'
         file_path = get_file_path("if name main", "python")
         if not path.exists(file_path):
             created += 1
@@ -80,14 +75,9 @@ if __name__ == '__main__':
 """)
             if show: print(f"Successfully created 'if name main' at '{file_path}'")
     
-    elif language == "c#":
-        file_path = get_file_path("blank", "c#")
-        if not path.exists(file_path):
-            created += 1
-            with open(file_path, 'w+') as template:
-                template.write(f"# Description:\n# A blank file\n")
-            if show: print(f"Successfully created 'blank' at '{file_path}'")
-    
+    # Create C# templates
+    elif language == "c#":    
+        # Create 'hello world'
         file_path = get_file_path("hello world", "c#")
         if not path.exists(file_path):
             created += 1
@@ -105,6 +95,15 @@ class Program
 """)
             if show: print(f"Successfully created 'hello world' at '{file_path}'")
     
+    # Create global 'blank' template
+    file_path = get_file_path("blank", language)
+    if not path.exists(file_path):
+        created += 1
+        with open(file_path, 'w+') as template:
+            template.write(f"# Description:\n# A blank file\n")
+        if show: print(f"Successfully created 'blank' at '{file_path}'")
+
+
     if not show: return
     if created > 0:
         print(f"Successfully created all missing default templates for '{language}'")

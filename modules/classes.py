@@ -27,6 +27,9 @@ class Language():
         self.shebang = shebang
         self.gitignore = gitignore
         Language.languages[self.name] = self
+
+        if self.shebang is not None and not self.shebang.startswith("#!"):
+            self.shebang = f"#!{self.shebang}"
         
     def __str__(self) -> str:
         return(f"{self.name.capitalize()}: .{self.extension}\nShebang: '{self.shebang}'\n.gitignore:\n{self.gitignore}")

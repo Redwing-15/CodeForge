@@ -139,7 +139,7 @@ def get_defaults(language_input:str, show:bool = False) -> dict:
 
 def update_defaults(language:str, field:str, value:str, show:str = False) -> None:
     """
-    Updates a default field in the config.json file for a specified language.
+    Generates all default configs for a specified language.
 
     Arguments:
         language_input (str): The language to change a field of.
@@ -161,15 +161,15 @@ def update_defaults(language:str, field:str, value:str, show:str = False) -> Non
     return
 
 
-def generate_defaults(language_input:str, show:bool = False) -> None:
+def generate_defaults(language_input:str, show:bool = False) -> dict:
     """
-    Generates the default config files for a specified language
+    Returns a dictionary of all default configs for a specified language.
 
     Arguments:
         language (str): The language to generate default configs for.
         show (bool, optional): Display output. Defaults to False.
     """
-    with open("config.json", 'r') as file:
+    with open('config.json', 'r') as file:
         data = json.load(file)
     default_data = data["defaults"]
 
@@ -178,10 +178,21 @@ def generate_defaults(language_input:str, show:bool = False) -> None:
         return
     
     for language, value in Language.languages.items():
-        default_data[language_input] = {'output_path': path.join('.', 'projects', language), 'ide': "vscode"}
+        if not language == language_input:
+            continue
+
+        defaults = {'output_path': path.join('.', 'projects', language), 'ide': "vscode"}
+
+        default_template = "blank"
+        if value.language in ["python", "c#"]:
+            default_template = "hello world"
+        defaults['template'] = default_template
+
+        default_data[language_input] = defaults
     
     with open('config.json', 'w+') as file:
         json.dump(data, file, indent=4)
+
     if show:
         print(f"Successfully generated default configs for {language_input}")
     return
@@ -208,8 +219,15 @@ def generate_json(show:bool = False) -> None:
 
     # Generate the defaults database
     defaults = {}
-    for language, value in languages.items():
-        defaults[language] = {'output_path': path.join('.', 'projects', value["language"]), 'ide': "vscode"}
+    for language in languages.keys():
+        data = {'output_path': path.join('.', 'projects', language), 'ide': "vscode"}
+
+        default_template = "blank"
+        if language in ["python", "cs_script", "cs_project"]:
+            default_template = "hello world"
+        data['template'] = default_template
+
+        defaults[language] = data
 
     # Compile into single dictionary
     json_data["languages"] = languages

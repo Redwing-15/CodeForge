@@ -49,7 +49,7 @@ def create_project(project_name:str,
     template_lines = template_lines[2:len(template_lines)]
         
     if language.shebang:
-        template_lines.insert(0, f"!#{language.shebang}\n")
+        template_lines.insert(0, f"{language.shebang}\n")
     with open(path.join(project_path, f"{project_name}.{language.extension}"), "w+") as file:
         file.writelines(template_lines)
 
