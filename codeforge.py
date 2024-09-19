@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from sys import argv
-from os import path
+from os import path, makedirs
 import argparse
 import json
 
@@ -197,11 +197,21 @@ def handle_args() -> None:
             print("note: some operating systems have case-sensitive directories, and thus might throw an error if mis-typed")
             return
     else:
-        if not path.exists(defaults['output_path']):
-            output_path = path.join('.', 'projects', language.language)
-            update_defaults(language.name, 'output_path', output_path)
+        default_path = path.abspath(defaults['output_path'])
+
+        if not path.exists(default_path):
+            create = input(f"The default output folder '{default_path}' does not exits. Would you like to create it?\n(Y) Y/N: ").strip().lower()
+
+            if create == 'n':
+                output_path = path.join('.', 'projects', language.language)
+                print(f"Rewriting default path to '{path.abspath(output_path)}'")
+                update_defaults(language.name, 'output_path', output_path)
+            else:
+                makedirs(default_path)
+                print("Successfully created folder")
+                output_path = default_path
         else:
-            output_path = defaults['output_path']
+            output_path = default_path
     
     create_project(project_name, language, template, args.nullable, args.repository, args.code, output_path)
 
