@@ -4,7 +4,7 @@ from shutil import rmtree
 
 # Need to use modules.classes as this script is intended to be called
 # from codeforge.py, which is in a parent directory and thus imports must
-# also be called from the parent directory
+# also be called as if from the parent directory
 from modules.classes import Language, IDE
 from modules.functions import get_defaults
 
@@ -82,7 +82,14 @@ def create_project(project_name:str,
     
     if open_project:
         ide_dict = get_defaults(language.name)["ide"]
-        ide = IDE.ides[ide_dict]
+
+        ide = None
+        for item in IDE.ides.values():
+            if item.name == ide_dict:
+                ide = item
+        if IDE is None:
+            print(f"Unknown IDE: '{ide_dict}'")
+            return
         ide_command = ide.open_command
 
         if ide_command is None:

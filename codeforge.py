@@ -274,7 +274,7 @@ def initialize() -> None:
     ides = data["ides"]
     for key, value in ides.items():
         # Handle cases where JSON does not provide values for "open_command"
-        open_command = getattr(value, "open_command", None)
+        open_command = value.get("open_command", None)
         IDE(display_name=key, name=value["name"], open_command=open_command)
 
 
